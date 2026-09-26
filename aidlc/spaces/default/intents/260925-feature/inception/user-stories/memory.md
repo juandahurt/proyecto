@@ -12,3 +12,5 @@
 
 ## Open questions
 <!-- example: 2026-05-29T10:14:32Z — confirm the retention window with compliance before the next stage hardens the schema -->
+- 2026-09-25T22:30:00Z — AC-3.1 specifies upload record created BEFORE Claude API call; ensures free tier counter is decremented atomically with upload regardless of AI outcome.
+- 2026-09-25T22:30:00Z — AC-5.1 "Top category" changed from "highest-scoring" to "lowest-scoring (most room to improve)" — more pedagogically aligned with the product's purpose.
