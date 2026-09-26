@@ -12,3 +12,8 @@
 
 ## Open questions
 <!-- example: 2026-05-29T10:14:32Z — confirm the retention window with compliance before the next stage hardens the schema -->
+
+- 2026-09-26T00:00:00Z — [Interpretation] Added [DEFERRED] badge to the SH-1 trend teaser section in Dashboard wireframe (Screen 4) to address rough mockup reviewer R-03. The badge is in orange to make the design intent vs. build scope distinction immediately visible without reading the notes.
+- 2026-09-26T00:00:00Z — [Interpretation] "Focus area" column (Dashboard Screen 4) is defined as lowest score (most room to improve), not highest score or most consistent. This is a product decision that directly affects the usefulness of the history table for learners.
+- 2026-09-26T00:00:00Z — [Tradeoff] WCAG 2.1 AA applies to all screens (Q3=A), even though this is an academic MVP. The rationale: WCAG compliance is a design practice, not an academic exemption, and Tailwind + shadcn/ui make AA compliance the default if implemented correctly.
+- 2026-09-26T00:00:00Z — [Open question] Score badge color contrast (green/yellow/red against their respective backgrounds) is not verified at design time. This must be checked before coding — flag for Build and Test accessibility validation.

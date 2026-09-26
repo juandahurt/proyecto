@@ -1,0 +1,22 @@
+{
+  "stage": "domain-design",
+  "upstream_ids": ["FR-1","FR-2","FR-3","FR-4","FR-5","FR-6","FR-7","FR-8","FR-9","FR-10","FR-11","FR-12","FR-13","NFR-6","NFR-7"],
+  "coverage": [
+    { "id": "FR-1", "status": "OK", "target": "IngestionService — upload acceptance and validation" },
+    { "id": "FR-2", "status": "OK", "target": "IngestionService — Claude API integration" },
+    { "id": "FR-3", "status": "OK", "target": "IngestionService — low-confidence fallback path" },
+    { "id": "FR-4", "status": "OK", "target": "IngestionService — Upload and CategoryCritique ownership; ADR-002 enforces blob isolation" },
+    { "id": "FR-5", "status": "OK", "target": "ProgressService — CategoryCritique time series via ingestion schema read" },
+    { "id": "FR-6", "status": "OK", "target": "ProgressService — TrendCalculator domain service (linear regression)" },
+    { "id": "FR-7", "status": "OK", "target": "ProgressService — tier-gated trend API; tier status from IdentityService" },
+    { "id": "FR-8", "status": "OK", "target": "IdentityService — UserAccount aggregate, JWT, bcrypt" },
+    { "id": "FR-9", "status": "OK", "target": "IdentityService — TierSubscription aggregate, QuotaEnforcer domain service" },
+    { "id": "FR-10", "status": "OK", "target": "IdentityService — mock payment upgrade path within TierSubscription" },
+    { "id": "FR-11", "status": "OK", "target": "TrustService — OnboardingRecord aggregate" },
+    { "id": "FR-12", "status": "OK", "target": "TrustService — data policy content service" },
+    { "id": "FR-13", "status": "OK", "target": "TrustService — HistoryDeletion domain service (cross-context cascade)" },
+    { "id": "NFR-6", "status": "OK", "target": "IngestionService — Claude API key injected via K8s Secret; never in application code" },
+    { "id": "NFR-7", "status": "OK", "target": "IngestionService — magic number + MIME type validation before AI call" }
+  ],
+  "reverse": []
+}
