@@ -1,0 +1,22 @@
+{
+  "stage": "units-generation",
+  "upstream_ids": ["U1","U2","U3","U4","U5","U6","U7","U8","U9","U10","U11","U12","U13"],
+  "coverage": [
+    { "id": "U1", "status": "OK", "target": "u1-image-upload (IngestionService)" },
+    { "id": "U2", "status": "OK", "target": "u2-ai-critique (IngestionService)" },
+    { "id": "U3", "status": "OK", "target": "u3-low-confidence (IngestionService)" },
+    { "id": "U4", "status": "OK", "target": "u4-critique-storage (IngestionService)" },
+    { "id": "U5", "status": "OK", "target": "u5-history-storage (ProgressService)" },
+    { "id": "U6", "status": "OK", "target": "u6-trend-calculation (ProgressService)" },
+    { "id": "U7", "status": "OK", "target": "u7-tier-api (ProgressService)" },
+    { "id": "U8", "status": "OK", "target": "u8-authentication (IdentityService)" },
+    { "id": "U9", "status": "OK", "target": "u9-upload-limits (IdentityService)" },
+    { "id": "U10", "status": "OK", "target": "u10-mock-payment (IdentityService)" },
+    { "id": "U11", "status": "OK", "target": "u11-onboarding (TrustService)" },
+    { "id": "U12", "status": "OK", "target": "u12-data-policy (TrustService)" },
+    { "id": "U13", "status": "OK", "target": "u13-history-deletion (TrustService)" }
+  ],
+  "reverse": [
+    { "id": "u0-frontend", "status": "N/A", "target": "walking skeleton — no upstream proto-unit (added per Q2=B decision)" }
+  ]
+}

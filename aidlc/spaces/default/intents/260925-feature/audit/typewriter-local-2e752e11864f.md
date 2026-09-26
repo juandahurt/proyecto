@@ -3387,3 +3387,552 @@
 **Agent**: aidlc-architect-agent
 
 ---
+
+## Decision Recorded
+**Timestamp**: 2026-09-26T12:36:10Z
+**Event**: DECISION_RECORDED
+**Stage**: units-generation
+**Decision**: Granularidad de unidades de construcción y rol del Frontend
+**Options**: Guide me,I'll edit the file,Chat
+
+---
+
+## Question Answered
+**Timestamp**: 2026-09-26T12:41:10Z
+**Event**: QUESTION_ANSWERED
+**Stage**: units-generation
+**Details**: Q1=A 13 unidades individuales, Q2=B Frontend como parte del walking skeleton
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-09-26T12:41:24Z
+**Event**: DECISION_RECORDED
+**Stage**: units-generation
+**Decision**: Does this all look correct before I generate the artifact?
+**Options**: Looks correct,Request changes
+**Checkpoint**: Consolidated Summary Confirmation
+**Questions File**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/units-generation-questions.md
+
+---
+
+## Summary Confirmation Recorded
+**Timestamp**: 2026-09-26T12:41:24Z
+**Event**: SUMMARY_CONFIRMATION_RECORDED
+**Stage**: units-generation
+**Details**: Looks correct
+**Checkpoint**: Consolidated Summary Confirmation
+**Questions File**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/units-generation-questions.md
+**Questions SHA-256**: 01528fd72c612c95901e050301cfb88362d117b9ea292a7179364325f57fb043
+**Hash Scope**: confirmed-content-v1
+**Summary Authorization Id**: 639ee9e1643c0faaf54c4247fbe6c0f3aa2063b9312f736662bc7b1c1d52f04c
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-09-26T12:43:17Z
+**Event**: DECISION_RECORDED
+**Stage**: units-generation
+**Decision**: Learnings de Units Generation: ¿algo que conservar?
+**Options**: Nothing to add,Add a note
+
+---
+
+## Question Answered
+**Timestamp**: 2026-09-26T12:44:09Z
+**Event**: QUESTION_ANSWERED
+**Stage**: units-generation
+**Details**: Nothing to add
+
+---
+
+## Review Requested
+**Timestamp**: 2026-09-26T12:45:29Z
+**Event**: REVIEW_REQUESTED
+**Stage**: units-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:9542c51487a6c3ce3eb2f8e3dca390270d8830eadee5c39b9edd8f20c284d3d4
+**Request Id**: review:0daea402325ac4d2095763f724886ba9
+
+---
+
+## Review Completed
+**Timestamp**: 2026-09-26T12:47:48Z
+**Event**: REVIEW_COMPLETED
+**Stage**: units-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Iteration**: 1
+**Verdict**: NOT-READY
+**Request Fingerprint**: sha256:9542c51487a6c3ce3eb2f8e3dca390270d8830eadee5c39b9edd8f20c284d3d4
+**Artifact Fingerprint**: sha256:9542c51487a6c3ce3eb2f8e3dca390270d8830eadee5c39b9edd8f20c284d3d4
+**Request Id**: review:0daea402325ac4d2095763f724886ba9
+**Review Record**: .aidlc-engine/reviews/units-generation/stage/fb67599a3c058c6b/1.json
+**Review Record Digest**: sha256:bea69fda87317dd00aa1c362f835928a3df1e4f6e155649bc26a988b1eaba40b
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:57Z
+**Event**: SENSOR_FIRED
+**Fire id**: 2c513be3
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-09-26T12:47:57Z
+**Event**: SENSOR_PASSED
+**Fire id**: 2c513be3
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+**Duration ms**: 50
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:57Z
+**Event**: SENSOR_FIRED
+**Fire id**: 976236a0
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:47:57Z
+**Event**: SENSOR_FAILED
+**Fire id**: 976236a0
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/required-sections-976236a0.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: a80c90c8
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_PASSED
+**Fire id**: a80c90c8
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+**Duration ms**: 52
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: d44c2def
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_PASSED
+**Fire id**: d44c2def
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+**Duration ms**: 51
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8f2263fc
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_FAILED
+**Fire id**: 8f2263fc
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-8f2263fc.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: 6b385750
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:47:58Z
+**Event**: SENSOR_FAILED
+**Fire id**: 6b385750
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-6b385750.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:59Z
+**Event**: SENSOR_FIRED
+**Fire id**: 932d4e64
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:47:59Z
+**Event**: SENSOR_FAILED
+**Fire id**: 932d4e64
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-932d4e64.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:47:59Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5b28d882
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:47:59Z
+**Event**: SENSOR_FAILED
+**Fire id**: 5b28d882
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-5b28d882.md
+**Findings count**: 1
+
+---
+
+## Stage Awaiting Approval
+**Timestamp**: 2026-09-26T12:47:59Z
+**Event**: STAGE_AWAITING_APPROVAL
+**Stage**: units-generation
+
+---
+
+## Gate Rejected
+**Timestamp**: 2026-09-26T12:50:20Z
+**Event**: GATE_REJECTED
+**Stage**: units-generation
+**Feedback**: R-01: Add u6 to u13 depends_on; R-02: Fix backlog U9 dependency (circular reference); R-03: Resolve u12 dependency contradiction between backlog and unit-of-work
+
+---
+
+## Stage Revising
+**Timestamp**: 2026-09-26T12:50:20Z
+**Event**: STAGE_REVISING
+**Stage**: units-generation
+**Revision count**: 1
+**Feedback**: R-01: Add u6 to u13 depends_on; R-02: Fix backlog U9 dependency (circular reference); R-03: Resolve u12 dependency contradiction between backlog and unit-of-work
+
+---
+
+## Error Logged
+**Timestamp**: 2026-09-26T12:52:32Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log engine log review --stage units-generation --reviewer aidlc-architecture-reviewer-agent --iteration 2
+**Error**: Cannot start review iteration 2 for "units-generation" because the next iteration is 1. Retry with --iteration 1.
+
+---
+
+## Review Requested
+**Timestamp**: 2026-09-26T12:52:38Z
+**Event**: REVIEW_REQUESTED
+**Stage**: units-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:a35d89ce04fa8ab029dee292826549bc1ccaaddcb52aa4d3ffa39e61de0e3d08
+**Request Id**: review:61789340d4926a3c21e82c6eaaea79af
+
+---
+
+## Error Logged
+**Timestamp**: 2026-09-26T12:54:01Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log engine log review --stage units-generation --reviewer aidlc-architecture-reviewer-agent --iteration 1 --verdict READY
+**Error**: Cannot record review for "units-generation": no review was written for iteration 1. The reviewer writes its review to aidlc/spaces/default/intents/260925-feature/.aidlc-engine/reviews/units-generation/stage/51dbaa98312425da/1.review.md (or pass --review-file <path>); a retried incomplete attempt records --verdict NOT-READY without a review.
+
+---
+
+## Error Logged
+**Timestamp**: 2026-09-26T12:54:25Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log engine log review --stage units-generation --reviewer aidlc-architecture-reviewer-agent --iteration 1 --verdict READY --review-file aidlc/spaces/default/intents/260925-feature/.aidlc-engine/reviews/units-generation/stage/51dbaa98312425da/1.review.md
+**Error**: Refusing REVIEW_COMPLETED for "units-generation": the reviewer appendix must contain exactly one Iteration line matching the request.
+
+---
+
+## Review Completed
+**Timestamp**: 2026-09-26T12:54:50Z
+**Event**: REVIEW_COMPLETED
+**Stage**: units-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Iteration**: 1
+**Verdict**: READY
+**Request Fingerprint**: sha256:a35d89ce04fa8ab029dee292826549bc1ccaaddcb52aa4d3ffa39e61de0e3d08
+**Artifact Fingerprint**: sha256:a35d89ce04fa8ab029dee292826549bc1ccaaddcb52aa4d3ffa39e61de0e3d08
+**Request Id**: review:61789340d4926a3c21e82c6eaaea79af
+**Review Record**: .aidlc-engine/reviews/units-generation/stage/51dbaa98312425da/1.json
+**Review Record Digest**: sha256:406bcea7e098647a9e6179e61845255f330b30f91aa8f27a645196880387534a
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: 689c94b6
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-09-26T12:55:03Z
+**Event**: SENSOR_PASSED
+**Fire id**: 689c94b6
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+**Duration ms**: 54
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: bb5b91e2
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:55:03Z
+**Event**: SENSOR_FAILED
+**Fire id**: bb5b91e2
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/required-sections-bb5b91e2.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: 55b01b66
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_PASSED
+**Fire id**: 55b01b66
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+**Duration ms**: 54
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5e775100
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5e775100
+**Sensor ID**: required-sections
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+**Duration ms**: 52
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4b85cedf
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_FAILED
+**Fire id**: 4b85cedf
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-4b85cedf.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: ae53722f
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_FAILED
+**Fire id**: ae53722f
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-dependency.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-ae53722f.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: 849f6b34
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:55:05Z
+**Event**: SENSOR_FAILED
+**Fire id**: 849f6b34
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/unit-of-work-story-map.md
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-849f6b34.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-09-26T12:55:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: 44ed94ab
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-09-26T12:55:05Z
+**Event**: SENSOR_FAILED
+**Fire id**: 44ed94ab
+**Sensor ID**: upstream-coverage
+**Stage slug**: units-generation
+**Output path**: aidlc/spaces/default/intents/260925-feature/inception/units-generation/traceability.json
+**Detail path**: aidlc/spaces/default/intents/260925-feature/.aidlc-engine/sensors/units-generation/upstream-coverage-44ed94ab.md
+**Findings count**: 1
+
+---
+
+## Stage Awaiting Approval
+**Timestamp**: 2026-09-26T12:55:05Z
+**Event**: STAGE_AWAITING_APPROVAL
+**Stage**: units-generation
+**Details**: Re-entering gate after revision
+
+---
+
+## Gate Approved
+**Timestamp**: 2026-09-26T12:56:11Z
+**Event**: GATE_APPROVED
+**Stage**: units-generation
+**User Input**: Approve
+
+---
+
+## Stage Completion
+**Timestamp**: 2026-09-26T12:56:11Z
+**Event**: STAGE_COMPLETED
+**Stage**: units-generation
+**Validation Basis**: {"graphContract":"sha256:baf39a0a351356930786ca985bbb7c5893e8db3e93715525a8e909b629765ee7","inputs":[{"artifact":"components","contentHash":"sha256:4c28c7286cf68f561a9bc9fa3574912e9bf10ec37c5ed2004a77ef790a7f05d7","instanceCount":1,"presentCount":1,"producer":"domain-design","required":true,"structureHash":"sha256:2207451039a952dc88b515561153bf44856329aa6179519fc42c4cf5f1fe64dc"},{"artifact":"decisions","contentHash":"sha256:4a8184579c4fb57b859483f9032bd5f9f87a7117c35f1171943d881d3d26ad54","instanceCount":1,"presentCount":1,"producer":"domain-design","required":false,"structureHash":"sha256:e9220efe8be00314d00218a328f3c2acdadeffac4a3e4578f0f52f8e546ebf3e"},{"artifact":"requirements","contentHash":"sha256:ce814bc3bd5d76be04c6e975127bcb2cb10da207b1dfda6673cc1451fab0ed3f","instanceCount":1,"presentCount":1,"producer":"requirements-analysis","required":true,"structureHash":"sha256:719383e804e3221d69dd3113658a7b8075dcc3385cf535add720297926bcd3d6"},{"artifact":"stories","contentHash":"sha256:7d239d43a2a2ce28b92d31fd9559cffb35517aa3d549050b62aec055b6b47f1c","instanceCount":1,"presentCount":1,"producer":"user-stories","required":false,"structureHash":"sha256:36dc1ab4262d26b5dd6af286c8ccd3e399e35f31cfd773750987b2bf765124b1"}],"outputs":[{"artifact":"traceability","contentHash":"sha256:fc36f89721e45fed802f32a471918a0f6ebabef934d7147f72249562cdbb26e0","instanceCount":1,"presentCount":1,"producer":"units-generation","required":true,"structureHash":"sha256:7b34542f4a4451136765a0ce0080150d1609f39aeb66a442b0c15a520f7c8ec2"},{"artifact":"unit-of-work-dependency","contentHash":"sha256:f734bbd9ee18c2d3fc899e6d2e7b8e454f730bdb49d30c24a4d83edf2c20bd7b","instanceCount":1,"presentCount":1,"producer":"units-generation","required":true,"structureHash":"sha256:9f4344cdd71aeaeb77539783484687b8de44fb34ce7688eaded8d3ca879461c4"},{"artifact":"unit-of-work-story-map","contentHash":"sha256:202cc6e30a72788c05473d03fd895ecd6fca247dba1f479abdb630f91933e152","instanceCount":1,"presentCount":1,"producer":"units-generation","required":true,"structureHash":"sha256:b8ab1dc275a3be8ebd6cb5d94f3ec9a476ae41f25da01f8796ce5459ea9ee45f"},{"artifact":"unit-of-work","contentHash":"sha256:05dcf768a41845fe94482d2aaabf1bb730960d5e60a264077877736ee0b23d42","instanceCount":1,"presentCount":1,"producer":"units-generation","required":true,"structureHash":"sha256:d8bed0685fa7701ca815eb889a2b0050bb6c3921768db1a1251bf26170606f23"}],"projectType":"greenfield","schema":3}
+**Details**: Stage Units Generation approved by gate
+
+---
+
+## Stage Start
+**Timestamp**: 2026-09-26T12:56:11Z
+**Event**: STAGE_STARTED
+**Stage**: contract-design
+**Agent**: aidlc-architect-agent
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-09-26T12:58:32Z
+**Event**: DECISION_RECORDED
+**Stage**: contract-design
+**Decision**: Protocolo de comunicación inter-servicios y API gateway
+**Options**: Guide me,I'll edit the file,Chat
+
+---
