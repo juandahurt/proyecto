@@ -83,3 +83,10 @@ aidlc/diagnostics/
 # aidlc/spaces/*/intents/*/<phase>/<stage>/*.md (artifacts + diary).
 .claude/settings.local.json
 # END AI-DLC:gitignore
+
+# Monorepo application — added by WS-T01
+.turbo/
+.env
+.env.*
+!.env.example
+!.env.*.example
