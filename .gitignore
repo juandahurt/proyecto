@@ -93,3 +93,9 @@ aidlc/diagnostics/
 
 # Test coverage output — added by WS-T02
 coverage/
+
+# SQLite database files — added by WS-T04
+*.db
+*.sqlite
+*.sqlite3
+data/
