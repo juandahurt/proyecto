@@ -11,5 +11,9 @@ module.exports = {
     './src/handlers/': {
       branches: 75,
     },
+    './src/service/': {
+      lines: 80,
+      branches: 75,
+    },
   },
 };
