@@ -90,3 +90,6 @@ aidlc/diagnostics/
 .env.*
 !.env.example
 !.env.*.example
+
+# Test coverage output — added by WS-T02
+coverage/
