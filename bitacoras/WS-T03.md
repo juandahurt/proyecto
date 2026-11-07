@@ -63,3 +63,73 @@ Tests:       0 total
 ```
 
 ROJO confirmado: los tres módulos no existen. El test file fue escrito antes de cualquier implementación.
+
+### Cambios de implementación
+
+- `packages/shared-types/package.json`: añadido `zod ^4.6.7` como dependencia (fuente autoritativa del schema)
+- `packages/shared-types/src/anthropic.ts`: nuevo — `CritiqueResponseSchema` (Zod) + `CritiqueResponse` (z.infer<>)
+- `packages/shared-types/src/index.ts`: reemplazado placeholder con `export * from './anthropic'`
+- `packages/shared-types/tsconfig.json`: nuevo — config TS para que `npx tsc --noEmit -p packages/shared-types` funcione
+- `apps/backend/package.json`: añadido `@proyecto/shared-types ^0.0.1` en dependencies
+- `apps/backend/src/service/anthropic-error.ts`: nuevo — `AnthropicIntegrationError extends Error` con `kind` y `cause`
+- `apps/backend/src/service/anthropic-client.ts`: nuevo — `AnthropicClient` con `critique()` stub estático sin red
+- `apps/backend/src/__tests__/anthropic-client.test.ts`: nuevo — 7 tests (happy path + contrato rechaza + error path)
+- `apps/backend/jest.config.js`: añadido threshold `'./src/service/': { lines: 80, branches: 75 }`
+- `package-lock.json`: actualizado con las nuevas dependencias
+
+### Verde
+
+```
+$ npm test -w apps/backend -- --testPathPattern=anthropic-client
+
+PASS src/__tests__/anthropic-client.test.ts
+  AnthropicClient (stub)
+    happy path — camino feliz
+      ✓ critique() resuelve con CritiqueResponse que valida el schema (2 ms)
+    contract — contrato del schema (rechaza respuestas malformadas)
+      ✓ safeParse rejects when summary is empty string and categories is empty array
+      ✓ parse throws ZodError when summary is a number instead of string — invalid input rejects schema (3 ms)
+      ✓ safeParse rejects when category score is out of range 0-10 — contract validation
+    error path — camino de error (AnthropicIntegrationError)
+      ✓ critique() rejects with AnthropicIntegrationError when scenario is "error" (1 ms)
+      ✓ error scenario produces AnthropicIntegrationError with kind "stub-error"
+      ✓ AnthropicIntegrationError preserves cause when provided — error path branch (1 ms)
+
+Tests: 7 passed, 7 total
+```
+
+### Cobertura total (src/service/)
+
+```
+ src/service          |     100 |      100 |     100 |     100 |
+  anthropic-client.ts |     100 |      100 |     100 |     100 |
+  anthropic-error.ts  |     100 |      100 |     100 |     100 |
+service coverage ok
+```
+
+### Verificación CA-14 (sin secretos)
+
+Los únicos matches del grep de secretos fueron en el propio archivo de la tarea (`tareas/WS-T03-stub-claude-client.md`) que contiene el comando CA-14 literalmente como documentación. No hay credenciales hardcodeadas en ningún archivo de implementación.
+
+### Commit
+
+SHA: 82fcfc2 — `WS-T03: stub AnthropicClient + CritiqueResponse Zod schema`
+
+### Resumen de CAs
+
+| CA    | Estado | Notas                                                                                                              |
+| ----- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| CA-1  | VERDE  | CritiqueResponseSchema y CritiqueResponse exportados, tsc limpio                                                   |
+| CA-2  | VERDE  | `export * from './anthropic'` en index.ts                                                                          |
+| CA-3  | VERDE  | Claves summary, categories, name, score, comment presentes                                                         |
+| CA-4  | VERDE  | Clase AnthropicClient con critique(), sin imports HTTP                                                             |
+| CA-5  | VERDE  | AnthropicIntegrationError extends Error, con kind y cause                                                          |
+| CA-6  | VERDE  | 7 tests pasan, incluye happy path con parse()                                                                      |
+| CA-7  | VERDE  | Tests con `rejects`, `contract`, `invalid` en nombre                                                               |
+| CA-8  | VERDE  | Tests con `AnthropicIntegrationError`, `error path`, `error scenario`                                              |
+| CA-9  | VERDE  | jest.config.js tiene src/service/, cobertura 100%                                                                  |
+| CA-10 | VERDE  | npm run lint → 2 successful, 0 errores                                                                             |
+| CA-11 | VERDE  | zod: ^4.6.7 declarado en shared-types, tsc sin errores                                                             |
+| CA-12 | VERDE  | Rama tarea/WS-T03, 1 commit sobre main (82fcfc2)                                                                   |
+| CA-13 | VERDE  | No hay procesos node colgados                                                                                      |
+| CA-14 | VERDE  | Sin secretos en diff ni en árbol tracked (matches en archivo de tarea son el texto del comando, no valores reales) |
