@@ -45,8 +45,8 @@ Rutas, no contenido pegado:
 
 ## Criterios de aceptación
 
-Cada uno con **su comando**. El revisor los corre él mismo, desde la raíz del worktree
-`/Users/aureliano/Desktop/wt-WS-T02`.
+Cada uno con **su comando**. El revisor los corre él mismo, desde la raíz del clon
+`/Users/aureliano/Desktop/proyecto` con la rama `tarea/WS-T02` checada.
 
 - [ ] **CA-1** — `apps/backend/package.json` tiene scripts `dev`, `build`, `start`, `test` y Express como dependencia
   ```bash
@@ -95,11 +95,11 @@ Cada uno con **su comando**. El revisor los corre él mismo, desde la raíz del 
   ```
   Esperado: exit 0, `turbo` reporta `successful` en los packages.
 
-- [ ] **CA-8** — Rama `tarea/WS-T02` sobre `tarea/WS-T01` (lectura de vuelta con la herramienta real)
+- [ ] **CA-8** — Rama `tarea/WS-T02` sobre `main` (lectura de vuelta con la herramienta real)
   ```bash
-  git rev-parse --abbrev-ref HEAD && git log --oneline tarea/WS-T01..HEAD | head -5
+  git rev-parse --abbrev-ref HEAD && git log --oneline main..HEAD | head -5
   ```
-  Esperado: rama actual `tarea/WS-T02`, al menos un commit sobre `tarea/WS-T01`.
+  Esperado: rama actual `tarea/WS-T02`, al menos un commit sobre `main`.
 
 - [ ] **CA-9** — No hay procesos de node colgados del test en la máquina al final
   ```bash
@@ -139,4 +139,4 @@ Qué pruebas se escriben **en esta tarea**:
 
 ---
 
-_Tarea redactada por el orquestador. Rama destino: `tarea/WS-T02`. Worktree destino: `../wt-WS-T02`. Base: `tarea/WS-T01`._
+_Tarea redactada por el orquestador. Rama destino: `tarea/WS-T02`. Base: `main`. Modelo de aislamiento: rama directa en el clon `/Users/aureliano/Desktop/proyecto` (no se usan worktrees; cada tarea empuja su rama a `origin` y se abre un PR en GitHub). WS-T01 ya está squash-fusionada en `main` como commit `726e1e0`._
