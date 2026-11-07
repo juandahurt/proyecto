@@ -128,3 +128,15 @@ no leftover node processes
 ### Candidatas detectadas
 
 Ninguna fuera de alcance detectada.
+
+---
+
+## Respuesta a hallazgos — ronda 1
+
+Arbitraje del orquestador recibido y leído: `revisiones/WS-T04/arbitraje-ronda-1.md` (2026-11-07). Las tres resoluciones se aplican sin cambio de código.
+
+- F-01: Arbitrado por el orquestador — cambio aceptado. El revisor identificó correctamente que `packages/shared-types/package.json` fue editado fuera del alcance explícito de WS-T04 y que el codificador no emitió un empujón de vuelta formal antes de aplicarlo. El orquestador acepta el fix en el diff (revertirlo empeoraría el estado del repo) y registra: candidata C-07 (defecto de scaffold de WS-T01 que apuntaba `main`/`types` a `.ts` en lugar de `dist/`) y candidata C-08 (disciplina de empujón de vuelta — el codificador debe pausar y esperar autorización explícita antes de modificar archivos fuera de su alcance, incluso cuando el fix es mínimo y técnicamente correcto). SHA queda en 4d0caf4 sin revert.
+
+- F-02: Diferido a candidata C-09. El revisor observó que `critiques.ts` está en el límite exacto de los floors (81.25% líneas, 75% branches), sin colchón, y que las líneas 51-52, 64-65 y 74-75 (caminos de error inesperado en cliente, en `repo.save`, y catch genérico) no están cubiertas. El orquestador confirma que los floors del `team.md` se cumplen y que añadir los tres tests de camino 500 es una mejora real pero no bloqueante para WS-T04. Queda registrado para evitar que el margen cero sea una bomba de tiempo en ediciones futuras del handler.
+
+- F-03: Diferido a candidata C-10. El revisor observó que el test 502 no verifica la ausencia de registro persistido en BD (no hay `expect(repo.getById(...)).toBeNull()` ni conteo via SELECT), lo que significa que el test no distinguiría un bug hipotético donde el handler persiste antes de invocar al cliente. El orquestador confirma que el código del handler es correcto en el orden de operaciones y que la mejora no es bloqueante para WS-T04.
