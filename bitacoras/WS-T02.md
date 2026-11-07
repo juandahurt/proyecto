@@ -73,3 +73,43 @@ Time:        0.768 s
 ```
 
 ROJO CONFIRMADO: el test falla porque '../server' no existe. Ahora implemento.
+
+### Cambios implementados
+
+- apps/backend/package.json: scripts dev/build/start/test, express en dependencies, jest/ts-jest/supertest/@types/* en devDependencies
+- apps/backend/tsconfig.json: creado (target ES2022, module commonjs, outDir dist, strict true, excluye node_modules)
+- apps/backend/jest.config.js: preset ts-jest, collectCoverageFrom excluye index.ts (entry point no testeable), threshold lines 80% global / branches 75% en handlers/
+- apps/backend/src/handlers/health.ts: handler GET /health con respuesta {data:{status:"ok"},error:null,status:200}
+- apps/backend/src/server.ts: createApp() — crea Express app, monta /health, fallback 404
+- apps/backend/src/index.ts: llama createApp() y escucha en PORT (default 3000)
+- apps/backend/src/**tests**/health.test.ts: 3 tests — GET /health 200+body, Content-Type, GET /unknown 404
+- .gitignore: agrego coverage/ al final
+
+### Verde
+
+```
+$ npm test -w apps/backend 2>&1 | tail -10
+  GET /health
+    checkmark returns 200 with {data, error, status} structure (12 ms)
+    checkmark returns Content-Type application/json (2 ms)
+    checkmark returns 404 for unknown routes (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        0.574 s
+```
+
+### Resultados por criterio
+
+- CA-1: ok (scripts dev/build/start/test presentes, express en dependencies)
+- CA-2: ok (tsc compila sin errores, dist/ generado)
+- CA-3: ok (curl devuelve {"data":{"status":"ok"},"error":null,"status":200})
+- CA-4: ok (JSON tiene data/error/status, error null, status 200, data.status "ok")
+- CA-5: ok (3 passed, 0 failed, 0 skipped)
+- CA-6: ok (lines: 100% — index.ts excluido del coverage por ser entry point)
+- CA-7: ok (turbo lint: 2 successful)
+- CA-8: ok (rama tarea/WS-T02, commit e1cf1e9 sobre main)
+- CA-9: ok (no leftover processes)
+
+Commit: e1cf1e9
