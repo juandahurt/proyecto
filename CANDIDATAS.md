@@ -66,6 +66,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** una línea en el test del 502: `expect(repo.getById(1)).toBeNull()` (o un conteo via SELECT). Trivial, cabe en 5 min, cierra una clase entera de regresión futura.
 
+### C-11 — Arreglar el patrón de grep para contar schemas Zod en la plantilla de tareas
+
+**Origen:** F-01 ronda 1 de u8-T01 (AMARILLO). El comando literal del CA-2 fue `grep -E "(A|B|C|D)" ... | sort -u | wc -l` esperando 4, pero el patrón canónico Zod coloca cada nombre en 2 líneas (`export const XSchema = ...` y `export type X = z.infer<typeof XSchema>`), por lo que el conteo real es 8. La intención del CA (los 4 schemas presentes y re-exportados) se cumplió con holgura; el defecto está en la especificación del comando, no en el diff.
+
+**Qué sería:** una enmienda a `tareas/_plantilla.md` (o una convención documentada en `.claude/orquestador.md`) con un patrón que ancle la declaración: `grep -cE "^export const (Register|Login|AuthResponse|JwtPayload)Schema"` o `grep -oE "^export const [A-Z]\w+Schema" | sort -u | wc -l`. Sirve de referencia para cuando el orquestador redacte CAs equivalentes en u1, u9, u11 (que también declaran schemas Zod con infer).
+
+### C-12 — Cablear `JWT_TTL_SECONDS` del ConfigMap al servicio, o removerlo del ConfigMap
+
+**Origen:** F-02 ronda 1 de u8-T01 (AMARILLO). El ConfigMap `k8s/identity/configmap.yaml` define `JWT_TTL_SECONDS: '604800'` y se monta via `envFrom`, pero `apps/identity-service/src/service/jwt.ts` usa la constante literal `TOKEN_TTL_SECONDS = 604800` y nunca lee `process.env.JWT_TTL_SECONDS`. El mismo valor aparece en 4 sitios (configmap, jwt.ts, handlers/auth.ts, schemas/auth.ts como `z.literal(604800)`). Cambiar el ConfigMap no cambia el comportamiento; hay que editar código.
+
+**Qué sería:** una decisión binaria — o (a) quitar `JWT_TTL_SECONDS` del ConfigMap porque el TTL es una constante semántica del contrato (US-8 AC-8.2 exige exactamente 7 días; un ConfigMap editable sugiere falsamente que es configurable); o (b) cablearlo: `const TOKEN_TTL_SECONDS = parseInt(process.env.JWT_TTL_SECONDS ?? '604800', 10)` en jwt.ts + handlers/auth.ts, y quitar la `z.literal(604800)` del schema (relajar a `z.number().int().positive()`). Ambas son defendibles; la decisión depende de si el equipo quiere parametrizarlo a futuro.
+
+### C-13 — Subir `prefer-const` a nivel `error` en la config ESLint compartida
+
+**Origen:** F-03 ronda 1 de u8-T01 (AMARILLO). En `apps/identity-service/src/handlers/auth.ts:15` quedó `let dummyHash = '$2b$10$...'` sin reasignación. ESLint pasó sin flagearlo porque `prefer-const` no está a nivel `error` (o este archivo no está cubierto). No es defecto de u8-T01 pero es higiene preventiva que vale la pena generalizar.
+
+**Qué sería:** editar `eslint.config.js` de la raíz para añadir `'prefer-const': 'error'` (o subirlo si ya existe como `warn`). Trivial, protege contra una clase entera de código con intenciones poco claras.
+
 ---
 
 ## Cerradas
