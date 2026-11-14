@@ -3,7 +3,7 @@
 # Instala todas las dependencias (incluyendo devDependencies) y compila TS.
 # El build context es la raíz del workspace para acceder a packages/.
 # =============================================================================
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /workspace
 
@@ -15,7 +15,7 @@ COPY packages/shared-types/package.json ./packages/shared-types/
 COPY apps/backend/package.json ./apps/backend/
 
 # Herramientas de compilación nativa para better-sqlite3 (addon C++ compilado con node-gyp)
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 # Instalar todas las dependencias (incluyendo dev) dentro del contenedor Linux.
 # Esto compila better-sqlite3 para Linux — no copiar node_modules del host macOS.
@@ -35,7 +35,7 @@ RUN npm run build -w apps/backend
 # Stage 2: runtime
 # Imagen mínima con solo las dependencias de producción y los artefactos compilados.
 # =============================================================================
-FROM node:20-alpine AS runtime
+FROM node:20-slim AS runtime
 
 WORKDIR /app
 
