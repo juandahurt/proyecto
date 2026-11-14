@@ -84,6 +84,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** editar `eslint.config.js` de la raíz para añadir `'prefer-const': 'error'` (o subirlo si ya existe como `warn`). Trivial, protege contra una clase entera de código con intenciones poco claras.
 
+### C-14 — Simplificar la guarda duplicada de `JWT_SECRET` en `packages/auth-middleware/src/require-auth.ts`
+
+**Origen:** Observación informativa 1 ronda 1 de u8-T02 (AMARILLO leve). El middleware verifica `!process.env.JWT_SECRET` en las líneas 45-47 ANTES de llamar a `verifyToken`, y `verifyToken` lo vuelve a verificar y lanza el error; el `catch` (líneas 57-60) recaptura ese mismo error. Resultado: las líneas 58-59 son inalcanzables por diseño, visibles en el reporte de cobertura (`require-auth.ts` queda en `90% lines / 85.71% branches` — bajo el 100% del resto solo por esa redundancia). Defensa en profundidad, no bug, pero deja un trozo de código muerto que podría confundir a un lector futuro.
+
+**Qué sería:** elegir UNA de las dos guardas — probablemente dejar solo la de `verifyToken` (más atómica y testeada) y quitar el early-return del middleware. Un cambio de 3-4 líneas; cabe en una tarea de 10 minutos. Valor agregado: la cobertura del middleware sube a ~100% sin bajar el floor ni perder seguridad.
+
+### C-15 — Retrofit de `apps/identity-service/src/service/jwt.ts` para usar `@proyecto/auth-middleware`
+
+**Origen:** Tarea candidata enumerada tanto en el alcance declarado de u8-T02 (sección "Fuera", primer bullet) como en el informe del revisor de u8-T02 ronda 1 ("Tareas candidatas", segundo bullet). `identity-service` tiene su propio `verify(token)` local que funcionalmente es equivalente al `verifyToken` del package compartido, pero no lo usa — porque u8-T01 se escribió antes de u8-T02 y el refactor estaba explícitamente fuera de alcance para ambas.
+
+**Qué sería:** reemplazar en `apps/identity-service/src/service/jwt.ts` la implementación local de `verify` por `import { verifyToken } from '@proyecto/auth-middleware'` (y re-export si otros archivos del service lo usan por nombre). La firma (`sign`) se mantiene local — ese es el rol de identity-service como emisor. El valor es la DRY real una vez que u1 y u11 también importen desde el package: tres consumidores de una misma primitiva, un solo sitio donde cambiarla si hay que subir a HS512, rotar claves, o añadir un `kid` header.
+
 ---
 
 ## Cerradas
