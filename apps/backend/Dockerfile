@@ -14,6 +14,9 @@ COPY package.json package-lock.json turbo.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY apps/backend/package.json ./apps/backend/
 
+# Herramientas de compilación nativa para better-sqlite3 (addon C++ compilado con node-gyp)
+RUN apk add --no-cache python3 make g++
+
 # Instalar todas las dependencias (incluyendo dev) dentro del contenedor Linux.
 # Esto compila better-sqlite3 para Linux — no copiar node_modules del host macOS.
 RUN npm ci
