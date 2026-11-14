@@ -31,7 +31,7 @@ describe('POST /api/auth/login', () => {
     return res.body.data;
   }
 
-  it('CA-11 — 200 con token y expiresIn=604800 para credenciales válidas', async () => {
+  it('CA-11 — login ok 200 con token y expiresIn=604800 para credenciales válidas', async () => {
     const { app } = makeApp();
     await registerUser(app, 'carol@example.com', 'secretpass123');
 
@@ -73,7 +73,7 @@ describe('POST /api/auth/login', () => {
     expect(res.body.status).toBe(401);
   });
 
-  it('CA-13 — 401 con mensaje "invalid credentials" para email inexistente', async () => {
+  it('CA-13 — 401 login nonexistent email unknown email: "invalid credentials"', async () => {
     const { app } = makeApp();
 
     const res = await request(app)
