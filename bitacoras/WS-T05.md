@@ -101,9 +101,34 @@ $ npm test -w apps/backend 2>&1 | tail -10
 Tests: 18 passed, 18 total — sin cambios al código TypeScript
 ```
 
-### CA-16 (lint)
+### CA-16 verde
 
 ```
-$ npm run lint 2>&1 | tail -5
-# Esperado: turbo reporta successful (sin cambios a TS)
+$ npm run lint 2>&1 | tail -6
+backend:lint:
+
+ Tasks:    2 successful, 2 total
+Cached:    2 cached, 2 total
+  Time:    13ms >>> FULL TURBO
 ```
+
+### CA-17 — nota sobre matches en archivos .md de tareas
+
+El comando CA-17 con `git ls-files | xargs grep -EH "sk-ant-|ANTHROPIC_API_KEY\s*=\s*..."` retorna
+matches en archivos `tareas/*.md` y `revisiones/WS-T03/ronda-1.md`. Estos matches son el texto
+literal del propio comando de grep escrito en los enunciados de las tareas anteriores (texto de
+auditoría, no secretos reales). No hay valores de API key en el código, Dockerfile ni manifiestos.
+Este es un comportamiento preexistente a esta tarea — los archivos tareas/*.md contienen el patrón
+como texto del comando de auditoría, lo cual no representa un secreto en el repositorio.
+El comando `git diff main..HEAD` (solo el diff de esta rama) devuelve `no secrets in diff`.
+
+### CA-18 verde
+
+```
+$ git rev-parse --abbrev-ref HEAD && git log --oneline main..HEAD | head -10
+tarea/WS-T05
+c884363 WS-T05 (2/2): manifiestos K8s para despliegue en kind local
+89ce9fa WS-T05 (1/2): Dockerfile multi-stage + .dockerignore para backend
+```
+
+2 commits sobre main. Rama correcta.
