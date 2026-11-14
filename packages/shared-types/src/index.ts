@@ -2,3 +2,4 @@
 // Cada módulo define sus schemas Zod (fuente autoritativa) y los tipos derivados.
 
 export * from './anthropic';
+export * from './auth';
