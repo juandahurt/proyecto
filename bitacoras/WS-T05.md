@@ -204,3 +204,31 @@ FROM node:20-alpine AS builder
 ```
 
 2 FROMs, `AS builder` presente. Estructura multi-stage intacta.
+
+## Corrección imagen base Debian (ronda 3 — tercer defecto)
+
+### Diagnóstico del orquestador
+
+El prebuild `better-sqlite3/prebuilds/linuxmusl-arm64.node` produce SIGSEGV (exit 139) al
+instanciar `new Database()` en Docker sobre Apple Silicon. Es un bug conocido del prebuild
+musl-arm64. Con `node:20-alpine` (musl), `better-sqlite3` selecciona el prebuild
+`linuxmusl-arm64.node`, que falla en Apple Silicon. Con `node:20-slim` (Debian/glibc) se
+selecciona `linux-arm64.node`, que sí funciona.
+
+### Cambio
+
+- `apps/backend/Dockerfile` stage builder: `FROM node:20-alpine AS builder` → `FROM node:20-slim AS builder`
+- `apps/backend/Dockerfile` stage builder: `RUN apk add --no-cache python3 make g++` → `RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*`
+- `apps/backend/Dockerfile` stage runtime: `FROM node:20-alpine AS runtime` → `FROM node:20-slim AS runtime`
+
+Ningún otro archivo fue modificado.
+
+### Verde — verificación post-cambio
+
+```
+$ grep "FROM " apps/backend/Dockerfile
+FROM node:20-slim AS builder
+FROM node:20-slim AS runtime
+```
+
+Ambas etapas usan `node:20-slim`. Commit: `f1e878ab4e5999456ba283935b9cde07ffacfb33`.
