@@ -186,3 +186,21 @@ Cached:    1 cached, 2 total
 ```
 
 Lint pasa sin cambios. El Dockerfile no es analizado por ESLint; los archivos TypeScript no fueron modificados.
+
+### Corrección runtime stage (segundo defecto — ronda 2)
+
+**Problema diagnosticado por orquestador:** El stage `runtime` ejecutaba `RUN npm ci --omit=dev`. `better-sqlite3` está en `dependencies` (no `devDependencies`), por lo que `npm ci --omit=dev` también intentaba compilar el addon nativo en Alpine — y el stage `runtime` no tiene las herramientas de compilación (`python3`, `make`, `g++`). El build fallaba en el stage runtime por las mismas razones que antes en el builder.
+
+**Corrección:** Se reemplazó el bloque que copiaba manifiestos y ejecutaba `npm ci --omit=dev` por `COPY --from=builder /workspace/node_modules ./node_modules`. Esto reutiliza el addon `better-sqlite3` ya compilado para Linux en el stage builder, sin necesidad de recompilarlo. Se eliminó también la copia de `package-lock.json` (ya no es necesaria para la instalación).
+
+**Commit:** `813130e18262c911db3a84f1dde7bc1862fef7f9`
+
+**Verificación CA-1 post-corrección:**
+
+```
+$ grep -c "^FROM " apps/backend/Dockerfile && grep "AS builder" apps/backend/Dockerfile
+2
+FROM node:20-alpine AS builder
+```
+
+2 FROMs, `AS builder` presente. Estructura multi-stage intacta.
