@@ -132,3 +132,57 @@ c884363 WS-T05 (2/2): manifiestos K8s para despliegue en kind local
 ```
 
 2 commits sobre main. Rama correcta.
+
+## Ronda 2 (retrabajo — arbitraje del orquestador)
+
+### Hallazgos y respuestas
+
+F-01: corregido — añadido `RUN apk add --no-cache python3 make g++` en Dockerfile stage builder antes de `RUN npm ci`. Commit: 3a2f2c9.
+F-02: aceptado por orquestador, sin cambio de código. Los matches en archivos .md son self-references del patrón de auditoría en enunciados de tareas pasadas, no secretos reales.
+F-03: aceptado por orquestador, sin cambio de código. Mismo motivo que F-02.
+
+### Rojo primero (reproducción del fallo F-01)
+
+El fallo original se reproduciría al ejecutar `docker build` sin las herramientas nativas:
+
+```
+# En imagen node:20-alpine sin python3/make/g++:
+# npm error code 1
+# npm error path /workspace/node_modules/better-sqlite3
+# npm error command sh -c node-gyp rebuild
+# npm error gyp ERR! find Python
+# npm error gyp ERR! Python is not set from command line or npm configuration
+```
+
+Esto es lo que el orquestador diagnosticó y el revisor confirmó.
+
+### Cambio
+
+- `apps/backend/Dockerfile`: añadida línea `RUN apk add --no-cache python3 make g++` en el stage `builder`, inmediatamente antes de `RUN npm ci`. Esta línea instala las herramientas de compilación C++ que `node-gyp` necesita para construir el addon nativo de `better-sqlite3`.
+
+Nada más fue modificado.
+
+### Verde — CA-1 verificado
+
+```
+$ grep -c "^FROM " apps/backend/Dockerfile && grep "AS builder" apps/backend/Dockerfile && grep "apk add" apps/backend/Dockerfile
+2
+FROM node:20-alpine AS builder
+RUN apk add --no-cache python3 make g++
+```
+
+El Dockerfile sigue teniendo exactamente 2 FROMs y el stage `AS builder`. La nueva línea apk add aparece solo en el stage builder, antes de npm ci.
+
+### Verde — CA-16 verificado
+
+```
+$ npm run lint 2>&1 | tail -8
+backend:lint: > eslint .
+backend:lint:
+
+ Tasks:    2 successful, 2 total
+Cached:    1 cached, 2 total
+  Time:    787ms
+```
+
+Lint pasa sin cambios. El Dockerfile no es analizado por ESLint; los archivos TypeScript no fueron modificados.
