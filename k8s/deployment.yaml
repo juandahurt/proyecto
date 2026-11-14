@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proyecto-backend
+  labels:
+    app: proyecto-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proyecto-backend
+  template:
+    metadata:
+      labels:
+        app: proyecto-backend
+    spec:
+      containers:
+        - name: backend
+          image: proyecto-backend:v0.1.0
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: proyecto-backend-config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '100m'
+            limits:
+              memory: '256Mi'
+              cpu: '500m'
