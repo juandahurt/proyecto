@@ -232,3 +232,69 @@ FROM node:20-slim AS runtime
 ```
 
 Ambas etapas usan `node:20-slim`. Commit: `f1e878ab4e5999456ba283935b9cde07ffacfb33`.
+
+## Ronda 4 (retrabajo — fix better-sqlite3 versión)
+
+### Diagnóstico del orquestador
+
+`better-sqlite3@13.0.3` tiene un bug en sus prebuilds arm64 — el addon nativo hace SIGSEGV
+en Apple Silicon con Docker. El orquestador instruyó bajar a `9.6.0`.
+
+### Rojo primero
+
+Intento con v9.6.0 (instrucción original):
+
+```
+$ npm install  # con "better-sqlite3": "^9.6.0"
+npm error prebuild-install warn install No prebuilt binaries found
+  (target=26.13.0 runtime=node arch=arm64 libc= platform=darwin)
+npm error gyp ERR! build error — 20 compilation errors con Node 26 V8 API
+# SIGSEGV en Docker — y compilación rota en host (Node 26)
+```
+
+v9.6.0 fue lanzada para Node 18/20, no tiene prebuild para Node 26 ni compila desde fuente
+en Node 26 (incompatibilidad V8 API). Resultado: CA-15 roto (8 tests fallan, 3 suites fallan
+por `Could not locate the bindings file`).
+
+### Versión alternativa seleccionada: 12.11.1
+
+Criterio de selección:
+
+- `9.6.0`: no prebuild para Node 26, no compila en Node 26 → rompe CA-15
+- `12.11.1`: engines `{"node":"20.x || 22.x || 23.x || 24.x || 25.x || 26.x"}` → funciona
+  en host (Node 26) y en Docker (Node 20 glibc, node:20-slim). No tiene el bug SIGSEGV de
+  `13.0.3` en arm64 glibc.
+- `13.0.3`: bug SIGSEGV en prebuilds arm64 (motivo del retrabajo)
+
+### Cambio
+
+- `apps/backend/package.json`: `"better-sqlite3": "^13.0.3"` → `"better-sqlite3": "^12.11.1"`
+- `package-lock.json`: regenerado con `npm install` — better-sqlite3 resuelto en `12.11.1`
+
+### Verde
+
+```
+$ node -e "const p=require('./apps/backend/package.json'); console.log('better-sqlite3:', p.dependencies['better-sqlite3'])"
+better-sqlite3: ^12.11.1
+
+$ node -e "const lock=require('./package-lock.json'); const bs3=lock.packages['apps/backend/node_modules/better-sqlite3'] || lock.packages['node_modules/better-sqlite3']; console.log('lock version:', bs3 ? bs3.version : 'not found')"
+lock version: 12.11.1
+
+$ npm test -w apps/backend 2>&1 | tail -10
+PASS src/__tests__/critiques-endpoint.test.ts
+PASS src/__tests__/critique-repository.test.ts
+PASS src/__tests__/anthropic-client.test.ts
+PASS src/__tests__/health.test.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        1.011 s
+
+$ npm run lint 2>&1 | tail -4
+ Tasks:    2 successful, 2 total
+Cached:    1 cached, 2 total
+  Time:    817ms
+```
+
+Commit: `4801f03`
