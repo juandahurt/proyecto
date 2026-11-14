@@ -39,13 +39,13 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Copiar manifiestos para instalar solo prod deps
-COPY package.json package-lock.json turbo.json ./
+# Copiar manifiestos (necesarios para resolución de módulos de workspace)
+COPY package.json turbo.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY apps/backend/package.json ./apps/backend/
 
-# Instalar solo dependencias de producción
-RUN npm ci --omit=dev
+# Copiar node_modules pre-compilados del builder (incluye better-sqlite3 compilado para Linux)
+COPY --from=builder /workspace/node_modules ./node_modules
 
 # Copiar artefactos compilados del stage builder
 COPY --from=builder /workspace/packages/shared-types/dist ./packages/shared-types/dist
