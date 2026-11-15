@@ -185,7 +185,7 @@ node -e '
   const path=require("path");
   // Si el package tiene build, importa de dist; si no, usa ts-node o lee el fuente.
   const mod = require("./packages/shared-types/dist/onboarding.js");
-  const expected1 = "Estudio COMPLEMENTS human critique -- it does" + String.fromCharCode(39) + "t replace your instructor, community, or mentors.";
+  const expected1 = "Estudio COMPLEMENTS human critique -- it doesn" + String.fromCharCode(39) + "t replace your instructor, community, or mentors.";
   const expected2 = "AI feedback is categorized input, not a verdict. My own judgment and human critique remain primary.";
   const expected3 = "Estudio stores my uploads and critique history. My images are NEVER used to train AI models without my explicit, separate consent. I can delete my history at any time in Settings.";
   const got1 = mod.ONBOARDING_CHECKBOX_1;
