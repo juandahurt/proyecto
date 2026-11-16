@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: identity-service
-          image: identity-service:u8-T01
+          image: identity-service:u9-T01
           imagePullPolicy: Never
           ports:
             - name: http
