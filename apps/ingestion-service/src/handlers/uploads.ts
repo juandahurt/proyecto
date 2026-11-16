@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
+import { ClaudeVisionResponse } from '@proyecto/shared-types';
 import { detectImageKind, kindToExtension, kindToMimeType } from '../service/magic-number';
 import { writeBlob } from '../service/blob-store';
 import { UploadRepository } from '../service/upload-repository';
@@ -19,21 +20,24 @@ const upload = multer({
 
 export interface UploadsRouterDeps {
   repo: UploadRepository;
+  /** Cliente Claude Vision inyectable. En tests se inyecta un stub. En producción, callClaudeVision. */
+  claudeClient: (buf: Buffer) => Promise<ClaudeVisionResponse>;
 }
 
 /**
  * Crea el router de uploads.
  *
- * POST /api/uploads — sube una imagen autenticada.
+ * POST /api/uploads — sube una imagen autenticada y devuelve la crítica categorizada.
  *   - Requiere JWT válido (requireAuth inyectado en server.ts)
  *   - Acepta multipart/form-data, campo 'file', JPEG/PNG/WebP
  *   - Valida tamaño ≤ 10 MiB (multer + guard explícito)
  *   - Valida magic-number (NO Content-Type del cliente)
  *   - Genera stored_filename server-side con randomUUID() + extensión real
  *   - Escribe blob a BLOB_DIR, luego inserta en BD
- *   - Responde 202 { data: { uploadId }, error: null, status: 202 }
+ *   - Llama al cliente Claude Vision (stub o real) para obtener la crítica
+ *   - Responde 202 { data: { uploadId, status:"ready", confidence, categories }, error: null, status: 202 }
  */
-export function createUploadsRouter({ repo }: UploadsRouterDeps): Router {
+export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): Router {
   const router = Router();
 
   router.post(
@@ -132,8 +136,34 @@ export function createUploadsRouter({ repo }: UploadsRouterDeps): Router {
         sizeBytes: req.file.size,
       });
 
+      // Llamar al cliente Claude Vision (stub o real)
+      let critique: ClaudeVisionResponse;
+      try {
+        critique = await claudeClient(buffer);
+      } catch {
+        res.status(500).json({
+          data: null,
+          error: 'Failed to analyze image',
+          status: 500,
+        });
+        return;
+      }
+
+      // Mapear las categorías de ClaudeVisionResponse al shape de CategoryCritique del contrato C1
+      const categories = critique.categories.map((cat) => ({
+        categoryId: cat.id,
+        categoryName: cat.name,
+        score: cat.score,
+        feedback: cat.feedback,
+      }));
+
       res.status(202).json({
-        data: { uploadId: uploadRecord.uploadId },
+        data: {
+          uploadId: uploadRecord.uploadId,
+          status: 'ready',
+          confidence: critique.confidence,
+          categories,
+        },
         error: null,
         status: 202,
       });

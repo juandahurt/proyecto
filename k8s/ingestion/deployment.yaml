@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: ingestion-service
-          image: ingestion-service:u1-T01
+          image: ingestion-service:u2-T01
           imagePullPolicy: Never
           ports:
             - name: http
@@ -31,6 +31,12 @@ spec:
                 secretKeyRef:
                   name: jwt-secret
                   key: JWT_SECRET
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: anthropic-key
+                  key: api-key
+                  optional: true
           readinessProbe:
             httpGet:
               path: /health

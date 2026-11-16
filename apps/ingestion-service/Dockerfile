@@ -67,4 +67,5 @@ RUN mkdir -p /app/data/blobs
 EXPOSE 3200
 
 # El entry point está en apps/ingestion-service/dist/index.js relativo al WORKDIR /app
+# Imagen: ingestion-service:u2-T01
 CMD ["node", "apps/ingestion-service/dist/index.js"]
