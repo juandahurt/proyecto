@@ -53,5 +53,13 @@ export function createDatabase(dbPath?: string): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_upload_counters_user_id ON upload_counters(user_id)
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      user_id TEXT NOT NULL PRIMARY KEY,
+      tier TEXT NOT NULL DEFAULT 'free',
+      upgraded_at TEXT
+    )
+  `);
+
   return db;
 }
