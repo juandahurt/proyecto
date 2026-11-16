@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: trust-service
-          image: trust-service:u11-T01
+          image: trust-service:u12-T01
           imagePullPolicy: Never
           ports:
             - name: http

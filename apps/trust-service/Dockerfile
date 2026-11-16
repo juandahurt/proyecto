@@ -44,6 +44,8 @@ RUN npm run build -w apps/trust-service
 # =============================================================================
 FROM node:20-slim AS runtime
 
+LABEL org.opencontainers.image.version="u12-T01"
+
 WORKDIR /app
 
 # Copiar manifiestos (necesarios para resolución de módulos de workspace)
