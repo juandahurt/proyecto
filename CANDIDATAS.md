@@ -96,6 +96,42 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** reemplazar en `apps/identity-service/src/service/jwt.ts` la implementación local de `verify` por `import { verifyToken } from '@proyecto/auth-middleware'` (y re-export si otros archivos del service lo usan por nombre). La firma (`sign`) se mantiene local — ese es el rol de identity-service como emisor. El valor es la DRY real una vez que u1 y u11 también importen desde el package: tres consumidores de una misma primitiva, un solo sitio donde cambiarla si hay que subir a HS512, rotar claves, o añadir un `kid` header.
 
+### C-16 — Relajar los greps de comando de los CAs que fuerzan carácter de comilla específico
+
+**Origen:** F-01 ronda 1 de u11-T01 (AMARILLO). El CA-5 de u11-T01 corre `grep -E "\"unauthenticated\"" apps/trust-service/src/__tests__/*.ts`. El codificador implementó los tests con comillas simples (`error: 'unauthenticated'`), que es idiomático. El grep no encuentra el literal — pero el criterio sustantivo se cumple (401 con `error: "unauthenticated"` llega del middleware). El revisor pudo arbitrarlo porque la suite entera pasa, pero el comando del CA quedaría como AMARILLO en cualquier futura ronda sobre esta tarea.
+
+**Qué sería:** auditar todos los CAs activos y futuros donde el grep forza comillas dobles o simples alrededor de un literal. Reemplazar con `grep -E "unauthenticated"` (sin forzar la comilla) o con `grep -E "['\"]unauthenticated['\"]"` (aceptando ambas). Aplicable preventivamente a `tareas/_plantilla.md` para que el patrón no se propague.
+
+### C-17 — ESLint `argsIgnorePattern: '^_'` para que `_err` no genere warning
+
+**Origen:** F-01 ronda 1 de u9-T01 (AMARILLO). `apps/identity-service/src/handlers/increment-counter.ts:27` captura el error del try/catch como `_err` (prefijo `_` indica deliberadamente no usado), pero ESLint lo flaggea igual con `@typescript-eslint/no-unused-vars` warning. Exit 0 así que CA-14 pasa, pero es ruido innecesario en el output.
+
+**Qué sería:** en `eslint.config.js` de la raíz, añadir al override de `@typescript-eslint/no-unused-vars`: `{ "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }`. Eliminación de una clase entera de warnings; patrón trivial que estabiliza el lint output.
+
+### C-18 — SQLite efímero vs PVC persistente en `apps/ingestion-service/`
+
+**Origen:** Observación del revisor de u1-T01 ronda 1 + Notas explícitas de la tarea u1-T01. `/app/data/blobs/` monta un PVC (persistente); `/app/data/ingestion.db` vive en el filesystem efímero del contenedor. Al reiniciar el pod, los blobs persisten pero la BD se pierde — los registros se recrean desde cero, dejando los blobs huérfanos del upload previo. Documentado como deuda consciente ("persistencia real de la DB llega cuando se migre a PostgreSQL en una tarea aparte"). Se ve el síntoma en CA-18 del revisor: 4 blobs preexistentes vs 1 fila en la BD tras el E2E fresco.
+
+**Qué sería:** o bien montar el SQLite dentro del mismo PVC (mínimo esfuerzo pero adiós a cualquier escala futura), o migrar a PostgreSQL desplegado en el cluster (patrón que ya exigirá u2+). Mejor opción: posponer hasta u2-T01 cuando el schema real del ingestion crezca; aquí es higiene no bloqueante.
+
+### C-19 — Decisión arquitectónica: ¿`coverage/**` vive en `.gitignore` o en `eslint.config.js`?
+
+**Origen:** F-02 ronda 1 de u1-T01 (AMARILLO). El codificador modificó `eslint.config.js` para ignorar `coverage/**` + `**/coverage/**`. El revisor correctamente notó que el cambio NO era estrictamente necesario (los `warning` de "Unused eslint-disable directive" sobre `lcov-report/*.js` no rompían CA-15), pero tampoco rompe nada y es defensivo. Queda como decisión de arquitectura del equipo: ¿esto vive en `.gitignore` (ya está allí), en `eslint.config.js`, o en ambos (DRY-en-ambos puede ser deseable para proteger linters diferentes)?
+
+**Qué sería:** una sola decisión del tech lead/humano con un pequeño ADR si corresponde. Deja el cambio puesto por u1-T01 (no lo revertimos) y documéntalo para que futuros codificadores sepan que `coverage/` NO hay que linterarla.
+
+### C-20 — Hygiene de rebase vs confianza en el 3-way merge para olas con tareas intermedias
+
+**Origen:** F-01 ronda 1 de u1-T01 (NARANJA, arbitrado como INVÁLIDO por el orquestador). El revisor dio NO-VERDE pensando que `revisiones/u11-T01/ronda-1.md` se perdería al squash-mergear `tarea/u1-T01` porque el `git diff main..HEAD` lo mostraba como eliminado. El orquestador arbitró: GitHub "Squash and merge" hace una fusión 3-way real que preserva el archivo. Pero el revisor tiene un punto legítimo de hygiene — un rebase antes de entregar habría eliminado la ambigüedad.
+
+**Qué sería:** documentar en el `orquestador.md` (o en una nota a parte en `revisiones/README.md` o similar) la política del equipo: "cuando una ola tiene tareas que se cierran a ritmos distintos, las ramas posteriores NO necesitan rebasarse si el merge es squash vía GitHub; los diffs aparentemente contradictorios son artefacto de merge-base, no defecto". Alternativamente: establecer el patrón "rebasar antes de entregar" como norma blanda. Decisión del equipo.
+
+### C-21 — `uploadId` (PK en BD) vs `stored_filename` (nombre del blob) — relación por fila, no por convención
+
+**Origen:** Observación C-20 del revisor de u1-T01 (renumerada). El `uploadId` lo genera `upload-repository.ts` con `crypto.randomUUID()` server-side (CA-4); el `stored_filename` del blob lo genera el handler con `crypto.randomUUID()` + extensión del tipo detectado (CA-9). Son UUIDs INDEPENDIENTES — nunca coinciden. La fila `uploads` en SQLite es la única relación entre uno y otro. No es defecto pero es deuda de documentación: cualquier operación futura sobre el blob (thumbnail en u2, signed URL en u4, borrado en u13) debe partir de la fila de BD, NO adivinar el filename desde el uploadId.
+
+**Qué sería:** añadir una nota al `apps/ingestion-service/README.md` (cuando exista) explicando la convención. O un comentario en `upload-repository.ts` que documente la relación. O una decisión de arquitectura de usar el MISMO UUID para ambos (simplificación — pero pierde granularidad de rotación del blob storage). Trivial pero importante para las tareas que siguen.
+
 ---
 
 ## Cerradas

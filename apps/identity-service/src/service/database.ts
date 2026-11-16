@@ -40,5 +40,18 @@ export function createDatabase(dbPath?: string): Database.Database {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS upload_counters (
+      user_id TEXT NOT NULL,
+      year_month TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, year_month)
+    )
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_upload_counters_user_id ON upload_counters(user_id)
+  `);
+
   return db;
 }
