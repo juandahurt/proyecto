@@ -7,12 +7,12 @@ import { createDatabase } from '../service/database';
 import { createUploadRepository } from '../service/upload-repository';
 import { createApp } from '../server';
 
-const TEST_JWT_SECRET = 'a-test-secret-for-tests-only';
+const TEST_SIGNING_SECRET = 'a-test-secret-for-tests-only';
 const TEST_USER_ID = 'user-test-abc-123';
 
 /** Crea un JWT firmado con el secret de test para simular usuario autenticado. */
 function makeJwt(userId: string = TEST_USER_ID): string {
-  return jwt.sign({ sub: userId }, TEST_JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
+  return jwt.sign({ sub: userId }, TEST_SIGNING_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 }
 
 /** Buffer mínimo JPEG válido (firma FF D8 FF E0 + padding). */
@@ -45,7 +45,7 @@ describe('POST /api/uploads', () => {
   const originalBlobDir = process.env.BLOB_DIR;
 
   beforeAll(() => {
-    process.env.JWT_SECRET = TEST_JWT_SECRET;
+    process.env.JWT_SECRET = TEST_SIGNING_SECRET;
     tmpBlobDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-upload-test-'));
     process.env.BLOB_DIR = tmpBlobDir;
 
