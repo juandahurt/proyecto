@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingestion-service-config
+  labels:
+    app: ingestion-service
+data:
+  PORT: '3200'
+  NODE_ENV: 'production'
+  DB_PATH: '/app/data/ingestion.db'
+  BLOB_DIR: '/app/data/blobs'
+  MAX_UPLOAD_BYTES: '10485760'

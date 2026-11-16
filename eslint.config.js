@@ -12,6 +12,8 @@ module.exports = [
       '.claude/**',
       '.aidlc-rule-details/**',
       'entradas/**',
+      'coverage/**',
+      '**/coverage/**',
     ],
   },
   {
