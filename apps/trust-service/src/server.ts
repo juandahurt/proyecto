@@ -2,12 +2,15 @@ import express, { Application, Request, Response } from 'express';
 import Database from 'better-sqlite3';
 import { healthHandler } from './handlers/health';
 import { createOnboardingRouter } from './handlers/onboarding';
+import { createPolicyRouter } from './handlers/policy';
 import { createDatabase } from './service/database';
 import { createOnboardingRepository, OnboardingRepository } from './service/onboarding-repository';
+import { requireAuth } from '@proyecto/auth-middleware';
 
 export interface AppDeps {
   db?: Database.Database;
   repo?: OnboardingRepository;
+  policyContent?: string;
 }
 
 /**
@@ -31,6 +34,9 @@ export function createApp(deps?: AppDeps): Application {
 
   // GET /api/onboarding y POST /api/onboarding
   app.use('/api/onboarding', createOnboardingRouter({ repo }));
+
+  // GET /api/policy — política de datos estática, protegida por requireAuth
+  app.use('/api/policy', requireAuth, createPolicyRouter({ policyContent: deps?.policyContent }));
 
   // Fallback 404
   app.use((_req: Request, res: Response) => {
