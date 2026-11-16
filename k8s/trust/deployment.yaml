@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trust-service
+  labels:
+    app: trust-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trust-service
+  template:
+    metadata:
+      labels:
+        app: trust-service
+    spec:
+      containers:
+        - name: trust-service
+          image: trust-service:u11-T01
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3300
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: trust-service-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3300
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '100m'
+            limits:
+              memory: '256Mi'
+              cpu: '500m'
+      volumes:
+        - name: data-volume
+          emptyDir: {}
