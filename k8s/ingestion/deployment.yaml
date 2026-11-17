@@ -6,6 +6,8 @@ metadata:
     app: ingestion-service
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: ingestion-service
@@ -16,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ingestion-service
-          image: ingestion-service:u3-T01
+          image: ingestion-service:u4-T01
           imagePullPolicy: Never
           ports:
             - name: http
@@ -49,6 +51,10 @@ spec:
           volumeMounts:
             - name: blobs-volume
               mountPath: /app/data/blobs
+              subPath: blobs
+            - name: blobs-volume
+              mountPath: /app/data/db
+              subPath: db
           resources:
             requests:
               memory: '128Mi'

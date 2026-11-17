@@ -7,7 +7,7 @@ metadata:
 data:
   PORT: '3200'
   NODE_ENV: 'production'
-  DB_PATH: '/app/data/ingestion.db'
+  DB_PATH: '/app/data/db/ingestion.db'
   BLOB_DIR: '/app/data/blobs'
   MAX_UPLOAD_BYTES: '10485760'
   CLAUDE_TIMEOUT_MS: '30000'
