@@ -186,6 +186,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** un `PRAGMA wal_checkpoint` periódico o al cerrar el proceso. No urge con el volumen del MVP; revisar cuando u5/u6 lean la BD.
 
+### C-31 — Leer cabecera y categorías del detalle en una transacción de lectura
+
+**Origen:** Candidata del revisor en `revisiones/u4-T01/ronda-2.md`. Tras separar la lectura del dueño de la de categorías (F-01), `GET /api/uploads/:uploadId` hace dos consultas fuera de una transacción. Hoy es inocuo porque nada borra ni modifica críticas.
+
+**Qué sería:** envolver ambas lecturas en una transacción de lectura de better-sqlite3 cuando llegue u13 (borrado de historial), para que un borrado concurrente no deje una cabecera sin categorías.
+
 ---
 
 ## Cerradas
