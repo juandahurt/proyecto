@@ -3,7 +3,12 @@ import fs from 'fs';
 import path from 'path';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { ClaudeVisionResponse, UploadResultSchema } from '@proyecto/shared-types';
+import crypto from 'crypto';
+import {
+  ClaudeVisionResponse,
+  UploadResultSchema,
+  UploadDetailSchema,
+} from '@proyecto/shared-types';
 import { AnthropicIntegrationError } from '../service/anthropic-error';
 import { createDatabase } from '../service/database';
 import { createUploadRepository } from '../service/upload-repository';
@@ -380,5 +385,215 @@ describe('POST /api/uploads', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+// ---- u4-T01: persistencia de la crítica y GET /api/uploads/:uploadId ----
+describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
+  let db: ReturnType<typeof createDatabase>;
+  let repo: ReturnType<typeof createUploadRepository>;
+  let app: ReturnType<typeof createApp>;
+  let tmpBlobDir: string;
+  const originalJwtSecret = process.env.JWT_SECRET;
+  const originalBlobDir = process.env.BLOB_DIR;
+  const USER_A = 'user-a-u4';
+  const USER_B = 'user-b-u4';
+  const USER_C = 'user-c-u4';
+  const NOT_FOUND = { data: null, error: 'Not Found', status: 404 };
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = TEST_SIGNING_SECRET;
+    tmpBlobDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-u4-test-'));
+    process.env.BLOB_DIR = tmpBlobDir;
+    db = createDatabase(':memory:');
+    repo = createUploadRepository(db);
+    app = createApp({ db, repo, claudeClient: claudeClientStub });
+  });
+
+  afterAll(() => {
+    db.close();
+    if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalJwtSecret;
+    if (originalBlobDir === undefined) delete process.env.BLOB_DIR;
+    else process.env.BLOB_DIR = originalBlobDir;
+    fs.rmSync(tmpBlobDir, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    claudeClientStub.mockReset();
+    claudeClientStub.mockResolvedValue(STUB_CLAUDE_RESPONSE);
+  });
+
+  const post = (userId: string, appUnderTest = app) =>
+    request(appUnderTest)
+      .post('/api/uploads')
+      .set('Authorization', `Bearer ${makeJwt(userId)}`)
+      .attach('file', minimalJpegBuffer(30), { filename: 't.jpg', contentType: 'image/jpeg' });
+
+  const get = (id: string, userId?: string) => {
+    const r = request(app).get(`/api/uploads/${id}`);
+    return userId ? r.set('Authorization', `Bearer ${makeJwt(userId)}`) : r;
+  };
+
+  const critiqueRows = (uploadId: string) =>
+    db
+      .prepare(
+        'SELECT category_id, category_name, score, feedback FROM category_critiques WHERE upload_id = ? ORDER BY category_id'
+      )
+      .all(uploadId) as {
+      category_id: string;
+      category_name: string;
+      score: number;
+      feedback: string;
+    }[];
+
+  it.each(['HIGH', 'MEDIUM'] as const)(
+    'persist: POST %s guarda status ready, confidence y 5 filas en category_critiques',
+    async (confidence) => {
+      claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, confidence });
+      const res = await post(USER_A);
+      expect(res.status).toBe(202);
+      expect(UploadResultSchema.safeParse(res.body).success).toBe(true);
+      const id = res.body.data.uploadId;
+      const row = db
+        .prepare('SELECT status, confidence, fallback_reason FROM uploads WHERE upload_id = ?')
+        .get(id) as { status: string; confidence: string; fallback_reason: string | null };
+      expect(row).toEqual({ status: 'ready', confidence, fallback_reason: null });
+      const rows = critiqueRows(id);
+      expect(rows).toHaveLength(5);
+      for (const c of res.body.data.categories) {
+        const r = rows.find((x) => x.category_id === c.categoryId);
+        expect(r).toMatchObject({
+          category_name: c.categoryName,
+          score: c.score,
+          feedback: c.feedback,
+        });
+      }
+    }
+  );
+
+  it.each([
+    ['low_confidence_flag', () => ({ ...STUB_CLAUDE_RESPONSE, confidence: 'LOW' as const })],
+    ['invalid_schema', () => ({ ...STUB_CLAUDE_RESPONSE, categories: [] })],
+  ])('persist: fallback %s deja low_confidence, fallback_reason y 0 filas', async (reason, mk) => {
+    claudeClientStub.mockResolvedValueOnce(mk());
+    const res = await post(USER_A);
+    expect(res.status).toBe(202);
+    expect(res.body.data.fallbackReason).toBe(reason);
+    expect(res.body).not.toHaveProperty('data.categories');
+    const id = res.body.data.uploadId;
+    const row = db
+      .prepare('SELECT status, confidence, fallback_reason FROM uploads WHERE upload_id = ?')
+      .get(id);
+    expect(row).toEqual({ status: 'low_confidence', confidence: 'LOW', fallback_reason: reason });
+    expect(critiqueRows(id)).toHaveLength(0);
+  });
+
+  it('persist: fallback timeout deja low_confidence, fallback_reason timeout y 0 filas', async () => {
+    claudeClientStub.mockRejectedValueOnce(new AnthropicIntegrationError('timeout', 'x'));
+    const res = await post(USER_A);
+    expect(res.body.data.fallbackReason).toBe('timeout');
+    const id = res.body.data.uploadId;
+    expect(
+      db.prepare('SELECT status, fallback_reason FROM uploads WHERE upload_id = ?').get(id)
+    ).toEqual({ status: 'low_confidence', fallback_reason: 'timeout' });
+    expect(critiqueRows(id)).toHaveLength(0);
+  });
+
+  it('Failed to store critique: si saveCritique lanza → 500 y el log no expone buffer ni claves', async () => {
+    const failingRepo = {
+      ...repo,
+      saveCritique: () => {
+        throw new Error('disk full sk-ant-api03-SECRET');
+      },
+    };
+    const failApp = createApp({ db, repo: failingRepo, claudeClient: claudeClientStub });
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const res = await post(USER_A, failApp);
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ data: null, error: 'Failed to store critique', status: 500 });
+      const logged = JSON.stringify([...errSpy.mock.calls, ...warnSpy.mock.calls]);
+      expect(logged).not.toContain('sk-ant');
+      expect(logged).not.toContain('SECRET');
+    } finally {
+      errSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('GET 200 del dueño (UploadDetail): categories iguales a las del POST, timestamp con Z, sin thumbnailUrl', async () => {
+    const created = await post(USER_A);
+    const res = await get(created.body.data.uploadId, USER_A);
+    expect(res.status).toBe(200);
+    expect(UploadDetailSchema.safeParse(res.body).success).toBe(true);
+    expect(res.body.data.categories).toEqual(created.body.data.categories);
+    expect(res.body.data.categories.map((c: { categoryId: string }) => c.categoryId)).toEqual([
+      'CAT-1',
+      'CAT-2',
+      'CAT-3',
+      'CAT-4',
+      'CAT-5',
+    ]);
+    expect(res.body.data.timestamp).toMatch(/Z$/);
+    expect(res.body.data.status).toBe('ready');
+    expect(res.body.data.confidence).toBe('HIGH');
+    expect(res.body.data).not.toHaveProperty('thumbnailUrl');
+    expect(res.body.data).not.toHaveProperty('fallbackReason');
+  });
+
+  it('GET 403 Forbidden a otro usuario y a un tercero: sin ningún dato del upload (AC-4.1)', async () => {
+    const created = await post(USER_A);
+    const id = created.body.data.uploadId;
+    for (const other of [USER_B, USER_C]) {
+      const res = await get(id, other);
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ data: null, error: 'Forbidden', status: 403 });
+      const raw = JSON.stringify(res.body);
+      expect(raw).not.toContain(id);
+      for (const c of created.body.data.categories) {
+        expect(raw).not.toContain(c.feedback);
+        expect(raw).not.toContain(`"score":${c.score}`);
+      }
+    }
+  });
+
+  it('GET 404 Not Found: UUID inexistente, ids que no son UUID y upload propio sin crítica', async () => {
+    const missing = await get(crypto.randomUUID(), USER_A);
+    expect(missing.status).toBe(404);
+    expect(missing.body).toEqual(NOT_FOUND);
+    for (const bad of ['abc', '..%2Fetc%2Fpasswd', '123']) {
+      const res = await get(bad, USER_A);
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual(NOT_FOUND);
+    }
+    const bare = repo.create({
+      userId: USER_A,
+      storedFilename: 'x.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1,
+    });
+    const res = await get(bare.uploadId, USER_A);
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual(NOT_FOUND);
+  });
+
+  it('GET 401 unauthenticated sin Authorization', async () => {
+    const res = await get(crypto.randomUUID());
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ data: null, error: 'unauthenticated', status: 401 });
+  });
+
+  it('GET low_confidence / fallback del dueño → 200 con fallbackReason y sin categories', async () => {
+    claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, confidence: 'LOW' });
+    const created = await post(USER_A);
+    const res = await get(created.body.data.uploadId, USER_A);
+    expect(res.status).toBe(200);
+    expect(UploadDetailSchema.safeParse(res.body).success).toBe(true);
+    expect(res.body.data.status).toBe('low_confidence');
+    expect(res.body.data.confidence).toBe('LOW');
+    expect(res.body.data.fallbackReason).toBe('low_confidence_flag');
+    expect(res.body).not.toHaveProperty('data.categories');
   });
 });

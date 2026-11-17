@@ -65,3 +65,21 @@ export const UploadResultSchema = z.object({
 
 /** Tipo TypeScript derivado. Nunca definir manualmente. */
 export type UploadResult = z.infer<typeof UploadResultSchema>;
+
+// =============================================================================
+// C1 — Upload Detail (u4-T01)
+// Body 200 de GET /api/uploads/:uploadId. Deriva de UploadResultSchema (sin copiar
+// campos) y añade el timestamp ISO-8601. thumbnailUrl llega en u4-T02.
+// =============================================================================
+
+export const UploadDetailSchema = z.object({
+  data: UploadResultSchema.shape.data.extend({
+    /** Instante del upload en ISO-8601 con zona (UTC, sufijo Z). */
+    timestamp: z.string().datetime(),
+  }),
+  error: z.null(),
+  status: z.literal(200),
+});
+
+/** Tipo TypeScript derivado. Nunca definir manualmente. */
+export type UploadDetail = z.infer<typeof UploadDetailSchema>;

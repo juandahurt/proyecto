@@ -1,11 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
-import { ClaudeVisionResponse, UploadResult } from '@proyecto/shared-types';
+import { ClaudeVisionResponse, UploadResult, UploadDetail } from '@proyecto/shared-types';
 import { detectImageKind, kindToExtension, kindToMimeType } from '../service/magic-number';
 import { writeBlob } from '../service/blob-store';
 import { UploadRepository } from '../service/upload-repository';
 import { resolveCritique, CritiqueOutcome } from '../service/critique-outcome';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 10 MiB — coincide con MAX_UPLOAD_BYTES en ConfigMap K8s. */
 const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 10485760);
@@ -153,6 +155,20 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
         return;
       }
 
+      // u4: persistir la crítica ANTES de responder (una sola transacción en el repo)
+      try {
+        repo.saveCritique(uploadRecord.uploadId, outcome);
+      } catch {
+        // El upload ya quedó registrado (aceptado). No se loguea el error: puede arrastrar datos.
+        console.error(`[uploads] failed to store critique uploadId=${uploadRecord.uploadId}`);
+        res.status(500).json({
+          data: null,
+          error: 'Failed to store critique',
+          status: 500,
+        });
+        return;
+      }
+
       if (outcome.kind === 'fallback') {
         // Solo uploadId y reason: nunca buffer, API key ni texto crudo de Claude
         console.warn(
@@ -183,7 +199,7 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
         feedback: cat.feedback,
       }));
 
-      res.status(202).json({
+      const body = {
         data: {
           uploadId: uploadRecord.uploadId,
           status: 'ready',
@@ -192,9 +208,47 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
         },
         error: null,
         status: 202,
-      });
+      } satisfies UploadResult;
+      res.status(202).json(body);
     }
   );
+
+  /**
+   * GET /api/uploads/:uploadId — detalle de una crítica persistida (US-4, AC-4.1).
+   * 404: id no UUID, inexistente o sin crítica persistida (D-4). 403: upload de otro usuario,
+   * comprobado ANTES de serializar categorías, sin ningún dato del upload.
+   */
+  router.get('/:uploadId', (req: Request, res: Response) => {
+    const notFound = () => res.status(404).json({ data: null, error: 'Not Found', status: 404 });
+    const uploadId = String(req.params.uploadId);
+    if (!UUID_RE.test(uploadId)) {
+      notFound();
+      return;
+    }
+    const detail = repo.getDetail(uploadId);
+    if (!detail) {
+      notFound();
+      return;
+    }
+    if (detail.userId !== req.user!.userId) {
+      res.status(403).json({ data: null, error: 'Forbidden', status: 403 });
+      return;
+    }
+    if (detail.status === null || detail.confidence === null) {
+      notFound();
+      return;
+    }
+    const data: UploadDetail['data'] = {
+      uploadId: detail.uploadId,
+      status: detail.status,
+      confidence: detail.confidence,
+      timestamp: detail.timestamp,
+    };
+    if (detail.status === 'ready') data.categories = detail.categories;
+    else if (detail.fallbackReason) data.fallbackReason = detail.fallbackReason;
+    const body = { data, error: null, status: 200 } satisfies UploadDetail;
+    res.status(200).json(body);
+  });
 
   return router;
 }
