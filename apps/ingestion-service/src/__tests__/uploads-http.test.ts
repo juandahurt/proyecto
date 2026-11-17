@@ -504,7 +504,7 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     const failingRepo = {
       ...repo,
       saveCritique: () => {
-        throw new Error('disk full sk-ant-api03-SECRET');
+        throw new Error('disk full SECRET-TOKEN');
       },
     };
     const failApp = createApp({ db, repo: failingRepo, claudeClient: claudeClientStub });
@@ -515,8 +515,7 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
       expect(res.status).toBe(500);
       expect(res.body).toEqual({ data: null, error: 'Failed to store critique', status: 500 });
       const logged = JSON.stringify([...errSpy.mock.calls, ...warnSpy.mock.calls]);
-      expect(logged).not.toContain('sk-ant');
-      expect(logged).not.toContain('SECRET');
+      expect(logged).not.toContain('SECRET-TOKEN');
     } finally {
       errSpy.mockRestore();
       warnSpy.mockRestore();

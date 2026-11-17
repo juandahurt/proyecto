@@ -69,7 +69,7 @@ export type UploadResult = z.infer<typeof UploadResultSchema>;
 // =============================================================================
 // C1 — Upload Detail (u4-T01)
 // Body 200 de GET /api/uploads/:uploadId. Deriva de UploadResultSchema (sin copiar
-// campos) y añade el timestamp ISO-8601. thumbnailUrl llega en u4-T02.
+// campos) y añade el timestamp ISO-8601. La miniatura llega en u4-T02.
 // =============================================================================
 
 export const UploadDetailSchema = z.object({
