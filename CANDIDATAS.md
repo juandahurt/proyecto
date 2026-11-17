@@ -132,6 +132,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** añadir una nota al `apps/ingestion-service/README.md` (cuando exista) explicando la convención. O un comentario en `upload-repository.ts` que documente la relación. O una decisión de arquitectura de usar el MISMO UUID para ambos (simplificación — pero pierde granularidad de rotación del blob storage). Trivial pero importante para las tareas que siguen.
 
+### C-22 — `new Anthropic({ apiKey })` sin `maxRetries: 0` contradice C10 «No retry»
+
+**Origen:** Candidata del revisor en `revisiones/u3-T01/ronda-1.md`. `apps/ingestion-service/src/service/claude-client.ts` (código de u2) no fija `maxRetries`; el SDK 0.39 reintenta 2 veces por defecto ante errores de conexión, 5xx y timeouts (`core.js:134`), y C10 `ErrorBehavior` dice «No retry». Con el timeout de 30 s, el peor caso de espera antes del fallback puede multiplicarse.
+
+**Qué sería:** pasar `maxRetries: 0` al constructor del cliente y un test que lo fije observando las opciones que recibe el mock del SDK. Una línea de código más su prueba.
+
+### C-23 — Razón de fallback propia para errores de red/5xx (`api_error`)
+
+**Origen:** Decisión D-1 de `tareas/u3-T01-low-confidence.md` y nota del codificador en `bitacoras/u3-T01.md`. Hoy `fallbackReason: "timeout"` cubre también red y 5xx porque el enum C1 solo tiene tres valores; es semánticamente amplio para el frontend y para diagnóstico.
+
+**Qué sería:** añadir `api_error` al enum de `fallbackReason` en `packages/shared-types/src/uploads.ts` y en C1 (cambio aditivo, no rompe consumidores), y mapear `network` a ese valor en `critique-outcome.ts`. Toca shared-types, por eso es tarea aparte. Decisión del humano.
+
+### C-24 — `kubectl port-forward` huérfano a trust-service
+
+**Origen:** Revisor de u3-T01 ronda 1. Hay un `kubectl port-forward svc/trust-service 3300:3300` (PID 4456) abierto desde el 2026-11-16 18:57, de una ola anterior. Misma clase de higiene que C-05.
+
+**Qué sería:** matarlo (`kill 4456`) y cerrar siempre los port-forward al terminar un smoke test. No lo hace el orquestador: es el entorno del humano.
+
 ---
 
 ## Cerradas
