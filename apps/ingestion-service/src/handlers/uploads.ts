@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
-import { ClaudeVisionResponse } from '@proyecto/shared-types';
+import { ClaudeVisionResponse, UploadResult } from '@proyecto/shared-types';
 import { detectImageKind, kindToExtension, kindToMimeType } from '../service/magic-number';
 import { writeBlob } from '../service/blob-store';
 import { UploadRepository } from '../service/upload-repository';
@@ -158,7 +158,8 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
         console.warn(
           `[uploads] low_confidence uploadId=${uploadRecord.uploadId} reason=${outcome.reason}`
         );
-        res.status(202).json({
+        // satisfies: tsc comprueba los literales contra el contrato C1 (UploadResult)
+        const body = {
           data: {
             uploadId: uploadRecord.uploadId,
             status: 'low_confidence',
@@ -167,7 +168,8 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
           },
           error: null,
           status: 202,
-        });
+        } satisfies UploadResult;
+        res.status(202).json(body);
         return;
       }
 

@@ -7,12 +7,16 @@ jest.mock('@anthropic-ai/sdk', () => {
   class APIUserAbortError extends APIError {}
   class APIConnectionError extends APIError {}
   class APIConnectionTimeoutError extends APIConnectionError {}
+  class InternalServerError extends APIError {
+    status = 500;
+  }
   const Ctor = jest.fn().mockImplementation(() => ({ messages: { create: mockCreate } }));
   Object.assign(Ctor, {
     APIError,
     APIUserAbortError,
     APIConnectionError,
     APIConnectionTimeoutError,
+    InternalServerError,
   });
   return { __esModule: true, default: Ctor };
 });
@@ -91,7 +95,15 @@ describe('callClaudeVision (rama real, SDK simulado)', () => {
     expect(await kindOf(callClaudeVision(buf))).toBe('network');
   });
 
-  it('kind network — 5xx / error genérico del SDK', async () => {
+  it('kind network — InternalServerError (5xx) del SDK', async () => {
+    const err = new (
+      Anthropic as unknown as { InternalServerError: new () => Error }
+    ).InternalServerError();
+    mockCreate.mockRejectedValue(err);
+    expect(await kindOf(callClaudeVision(buf))).toBe('network');
+  });
+
+  it('kind network — error genérico del SDK', async () => {
     mockCreate.mockRejectedValue(new Error('500 Internal Server Error'));
     expect(await kindOf(callClaudeVision(buf))).toBe('network');
   });

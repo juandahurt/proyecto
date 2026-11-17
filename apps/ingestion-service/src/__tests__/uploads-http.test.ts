@@ -286,6 +286,7 @@ describe('POST /api/uploads', () => {
       .attach('file', minimalJpegBuffer(20), { filename: 'test.jpg', contentType: 'image/jpeg' });
 
     expect(res.status).toBe(500);
+    expect(res.body.status).toBe(500);
     expect(res.body.data).toBeNull();
     expect(res.body.error).toBe('Failed to analyze image');
   });
@@ -360,5 +361,24 @@ describe('POST /api/uploads', () => {
     expect(res.body.data.confidence).toBe('MEDIUM');
     expect(res.body.data.categories).toHaveLength(5);
     expect(res.body.data).not.toHaveProperty('fallbackReason');
+  });
+
+  it('log de fallback — console.warn solo lleva uploadId y reason (sin buffer ni texto de Claude)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      claudeClientStub.mockResolvedValueOnce({
+        ...STUB_CLAUDE_RESPONSE,
+        confidence: 'LOW',
+        secretRaw: 'RAW-CLAUDE-TEXT',
+      });
+      const res = await upJpeg(makeJwt());
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]).toHaveLength(1);
+      expect(warn.mock.calls[0][0]).toBe(
+        `[uploads] low_confidence uploadId=${res.body.data.uploadId} reason=low_confidence_flag`
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

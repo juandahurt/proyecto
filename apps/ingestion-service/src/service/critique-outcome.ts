@@ -1,7 +1,12 @@
-import { ClaudeVisionResponse, ClaudeVisionResponseSchema } from '@proyecto/shared-types';
+import {
+  ClaudeVisionResponse,
+  ClaudeVisionResponseSchema,
+  UploadResult,
+} from '@proyecto/shared-types';
 import { AnthropicIntegrationError } from './anthropic-error';
 
-export type FallbackReason = 'low_confidence_flag' | 'invalid_schema' | 'timeout';
+/** Derivado del contrato C1 (UploadResultSchema); no se copia el enum a mano. */
+export type FallbackReason = NonNullable<UploadResult['data']['fallbackReason']>;
 
 export type CritiqueOutcome =
   { kind: 'ready'; critique: ClaudeVisionResponse } | { kind: 'fallback'; reason: FallbackReason };
