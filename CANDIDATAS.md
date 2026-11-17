@@ -150,6 +150,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** matarlo (`kill 4456`) y cerrar siempre los port-forward al terminar un smoke test. No lo hace el orquestador: es el entorno del humano.
 
+### C-25 — Tipar con `satisfies UploadResult` el body `ready` de `handlers/uploads.ts`
+
+**Origen:** F-06 ronda 2 de u3-T01 (AMARILLO, código heredado de u2). u3 tipó el body de fallback con `satisfies UploadResult`, pero el body `ready` sigue sin tipar: `status:'ready'` no lo comprueba el compilador contra el contrato C1.
+
+**Qué sería:** añadir `satisfies UploadResult` al body `ready`. Una línea; simétrico con el de fallback.
+
+### C-26 — La receta de CA-14 asume un usuario `test@example.com` que ya no existe
+
+**Origen:** Revisor de u3-T01 ronda 2. Las tareas de ola 2 y 3 copian la receta de JWT de u2-T01 con `login` de `test@example.com`; ese usuario ya no está en el cluster (SQLite efímero, ver C-18) y el revisor tuvo que usar `register`.
+
+**Qué sería:** en las próximas plantillas de tarea, usar `register` con un email único por ejecución y `login` solo como alternativa.
+
 ---
 
 ## Cerradas
