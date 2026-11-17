@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { healthHandler } from './handlers/health';
 import { createAuthRouter } from './handlers/auth';
 import { createLimitsRouter } from './handlers/limits';
+import { createSubscribeRouter } from './handlers/subscribe';
 import { createIncrementCounterRouter } from './handlers/increment-counter';
 import { createDatabase } from './service/database';
 import { createUserRepository, UserRepository } from './service/user-repository';
@@ -10,11 +11,16 @@ import {
   createUploadCounterRepository,
   UploadCounterRepository,
 } from './service/upload-counter-repository';
+import {
+  createSubscriptionRepository,
+  SubscriptionRepository,
+} from './service/subscription-repository';
 
 export interface AppDeps {
   db?: Database.Database;
   repo?: UserRepository;
   counterRepo?: UploadCounterRepository;
+  subscriptionRepo?: SubscriptionRepository;
 }
 
 /**
@@ -28,9 +34,11 @@ export function createApp(deps?: AppDeps): Application {
   const db = deps?.db ?? createDatabase();
   const repo = deps?.repo ?? createUserRepository(db);
   const counterRepo = deps?.counterRepo ?? createUploadCounterRepository(db);
+  const subscriptionRepo = deps?.subscriptionRepo ?? createSubscriptionRepository(db);
 
   app.use('/api/auth', createAuthRouter({ repo }));
-  app.use('/api/users', createLimitsRouter({ counterRepo }));
+  app.use('/api/users', createLimitsRouter({ counterRepo, subscriptionRepo }));
+  app.use('/api/users', createSubscribeRouter({ counterRepo, subscriptionRepo }));
   app.use('/api/internal', createIncrementCounterRouter({ counterRepo }));
 
   app.use((_req: Request, res: Response) => {

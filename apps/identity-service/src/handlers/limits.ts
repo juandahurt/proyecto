@@ -1,19 +1,37 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '@proyecto/auth-middleware';
 import { UploadCounterRepository } from '../service/upload-counter-repository';
+import { SubscriptionRepository } from '../service/subscription-repository';
 import { currentYearMonth, firstDayOfNextMonth } from '../service/clock';
 
 const FREE_TIER_LIMIT = 10;
 
 export interface LimitsRouterDeps {
   counterRepo: UploadCounterRepository;
+  subscriptionRepo: SubscriptionRepository;
 }
 
-export function createLimitsRouter({ counterRepo }: LimitsRouterDeps): Router {
+export function createLimitsRouter({ counterRepo, subscriptionRepo }: LimitsRouterDeps): Router {
   const router = Router();
 
   router.get('/me/limits', requireAuth, (req: Request, res: Response) => {
     const userId = req.user!.userId;
+    const tier = subscriptionRepo.getTier(userId);
+
+    if (tier === 'paid') {
+      res.status(200).json({
+        data: {
+          tier: 'paid',
+          uploadsRemaining: null,
+          uploadsLimit: null,
+          resetDate: null,
+        },
+        error: null,
+        status: 200,
+      });
+      return;
+    }
+
     const yearMonth = currentYearMonth();
     const count = counterRepo.getForMonth(userId, yearMonth);
     const uploadsRemaining = Math.max(0, FREE_TIER_LIMIT - count);
