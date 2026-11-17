@@ -174,6 +174,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** crear un PVC nuevo (p. ej. `ingestion-data`), migrar datos y borrar el viejo. Obliga a recrear el volumen; solo vale la pena si el nombre confunde de verdad.
 
+### C-29 — El patrón de secretos de CA-17 marca cualquier mención de `sk-ant-api<n>` en bitácoras
+
+**Origen:** Candidata del revisor en `revisiones/u4-T01/ronda-1.md` (F-02). El barrido `git ls-files | xargs grep …sk-ant-api[0-9]+…` incluye `bitacoras/` y `revisiones/`, así que una clave **falsa** citada en prosa (p. ej. al describir un test) hace fallar el criterio.
+
+**Qué sería:** excluir `bitacoras/` y `revisiones/` del barrido en las plantillas de tarea, o acotar el patrón a valores asignados. Mientras tanto, los codificadores no deben citar literales con forma de clave en las bitácoras.
+
+### C-30 — `wal_checkpoint` de la BD SQLite sobre el PVC
+
+**Origen:** Candidata del revisor en `revisiones/u4-T01/ronda-1.md`. `ingestion.db` no muestra checkpoint y el archivo WAL ya ocupa ~119 KB en el PVC.
+
+**Qué sería:** un `PRAGMA wal_checkpoint` periódico o al cerrar el proceso. No urge con el volumen del MVP; revisar cuando u5/u6 lean la BD.
+
 ---
 
 ## Cerradas
