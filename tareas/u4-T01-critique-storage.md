@@ -63,7 +63,7 @@ fallbackReason, categories}` con `categories` ordenadas por `category_id` ASC. `
 >
 > **`k8s/ingestion/deployment.yaml`** (modificar): `image: ingestion-service:u4-T01`; `strategy: type: Recreate` (RWO + SQLite en WAL:
 > nunca dos pods abriendo la misma BD durante un rollout); montar el **mismo PVC `ingestion-blobs`** con **dos `volumeMounts` con `subPath`**:
-> `subPath: blobs` → `/app/data/blobs` (conserva los blobs existentes) y `subPath: db` → `/app/data/db`. Un solo `volume` en `spec.volumes`.
+> `subPath: blobs` → `/app/data/blobs` (**fix de especificación, ronda 1:** esto NO conserva los blobs previos; el PVC estaba montado por su raíz, así que los 7 blobs viejos quedan en la raíz del PVC, fuera del subdirectorio `blobs`. Sin impacto funcional: la BD anterior era efímera y no los referenciaba; ver candidata C-27) y `subPath: db` → `/app/data/db`. Un solo `volume` en `spec.volumes`.
 >
 > **`k8s/ingestion/configmap.yaml`** (modificar): `DB_PATH: '/app/data/db/ingestion.db'`.
 >

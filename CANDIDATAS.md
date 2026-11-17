@@ -162,6 +162,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** en las próximas plantillas de tarea, usar `register` con un email único por ejecución y `login` solo como alternativa.
 
+### C-27 — Blobs huérfanos en la raíz del PVC `ingestion-blobs`
+
+**Origen:** Hallazgo del codificador en `bitacoras/u4-T01.md`. Hasta u3 el PVC se montaba por su raíz en `/app/data/blobs`; u4-T01 lo monta con `subPath: blobs` y `subPath: db`, así que los 7 blobs antiguos quedan en la raíz del PVC, inaccesibles. La tarea u4-T01 afirmaba por error que se conservarían (corregido como fix de especificación). Sin impacto funcional: ninguna fila de BD los referencia.
+
+**Qué sería:** borrarlos o moverlos a `blobs/` con un Job/`kubectl exec` puntual. Es dato de pruebas en un cluster local; decisión del humano.
+
+### C-28 — Renombrar el PVC `ingestion-blobs` (ahora guarda BD y blobs)
+
+**Origen:** Notas de `tareas/u4-T01-critique-storage.md` y bitácora de u4-T01. El nombre quedó engañoso tras mover la BD al mismo PVC.
+
+**Qué sería:** crear un PVC nuevo (p. ej. `ingestion-data`), migrar datos y borrar el viejo. Obliga a recrear el volumen; solo vale la pena si el nombre confunde de verdad.
+
 ---
 
 ## Cerradas
