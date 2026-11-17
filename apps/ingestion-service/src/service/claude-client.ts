@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClaudeVisionResponse, ClaudeVisionResponseSchema } from '@proyecto/shared-types';
+import { AnthropicIntegrationError } from './anthropic-error';
 
 /**
  * Nombre del modelo Claude a usar para las críticas de imagen.
@@ -8,9 +9,31 @@ import { ClaudeVisionResponse, ClaudeVisionResponseSchema } from '@proyecto/shar
 const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
 
 /**
- * Timeout para llamadas a la API de Anthropic: 30 000 ms (FR-3.3).
+ * Timeout por defecto para llamadas a la API de Anthropic: 30 000 ms (FR-3.3).
  */
-const CLAUDE_TIMEOUT_MS = 30_000;
+const DEFAULT_CLAUDE_TIMEOUT_MS = 30_000;
+
+/**
+ * Lee CLAUDE_TIMEOUT_MS en cada llamada (entero > 0). Ausente o inválido → 30 000.
+ */
+function resolveTimeoutMs(): number {
+  const raw = process.env.CLAUDE_TIMEOUT_MS;
+  if (raw === undefined || !/^\d+$/.test(raw.trim())) return DEFAULT_CLAUDE_TIMEOUT_MS;
+  const n = Number(raw.trim());
+  return Number.isSafeInteger(n) && n > 0 ? n : DEFAULT_CLAUDE_TIMEOUT_MS;
+}
+
+/**
+ * Distingue timeout/abort del resto de errores del SDK/red.
+ * Clases del SDK: APIConnectionTimeoutError y APIUserAbortError (el SDK lanza esta última
+ * cuando nuestro AbortSignal.timeout dispara). También DOMException TimeoutError/AbortError.
+ */
+function isTimeoutError(err: unknown): boolean {
+  if (err instanceof Anthropic.APIConnectionTimeoutError) return true;
+  if (err instanceof Anthropic.APIUserAbortError) return true;
+  const name = (err as { name?: string } | null)?.name;
+  return name === 'TimeoutError' || name === 'AbortError';
+}
 
 /**
  * Respuesta stub hard-codeada para usar cuando ANTHROPIC_API_KEY no está definida.
@@ -69,11 +92,12 @@ const STUB_RESPONSE: ClaudeVisionResponse = {
  * - Si `process.env.ANTHROPIC_API_KEY` NO está definido: devuelve el stub hard-codeado
  *   (confidence HIGH, 5 categories con datos ficticios pero schema-válidos).
  * - Si `process.env.ANTHROPIC_API_KEY` SÍ está definido: llama a `claude-3-5-sonnet-20241022`
- *   con timeout de 30 000 ms, instruyendo a Claude a devolver JSON con el schema C10 exacto.
+ *   con timeout de CLAUDE_TIMEOUT_MS (def. 30 000 ms), instruyendo a Claude a devolver JSON con el schema C10 exacto.
  *
  * @param imageBuffer - Buffer con los bytes de la imagen (JPEG, PNG o WebP).
  * @returns Promesa que resuelve a un objeto ClaudeVisionResponse validado por Zod.
- * @throws Error si la llamada real a Claude falla o si la respuesta no pasa validación C10.
+ * @throws AnthropicIntegrationError (kind timeout | network | bad-response) si la llamada real falla
+ *         o si la respuesta no pasa validación C10.
  */
 export async function callClaudeVision(imageBuffer: Buffer): Promise<ClaudeVisionResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -120,40 +144,48 @@ Rules:
 - feedback must be at least 2 sentences providing actionable critique.
 - Return ONLY the JSON object, no markdown, no explanation.`;
 
-  const response = await client.messages.create(
-    {
-      model: CLAUDE_MODEL,
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: base64Image,
+  let response: Awaited<ReturnType<typeof client.messages.create>>;
+  try {
+    response = await client.messages.create(
+      {
+        model: CLAUDE_MODEL,
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: base64Image,
+                },
               },
-            },
-            {
-              type: 'text',
-              text: 'Please evaluate this drawing and return the critique JSON as instructed.',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
+              {
+                type: 'text',
+                text: 'Please evaluate this drawing and return the critique JSON as instructed.',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        signal: AbortSignal.timeout(resolveTimeoutMs()),
+      }
+    );
+  } catch (err) {
+    if (isTimeoutError(err)) {
+      throw new AnthropicIntegrationError('timeout', 'Claude request timed out', err);
     }
-  );
+    throw new AnthropicIntegrationError('network', 'Claude request failed', err);
+  }
 
   // Extraer texto de la respuesta
   const textContent = response.content.find((c) => c.type === 'text');
   if (!textContent || textContent.type !== 'text') {
-    throw new Error('Claude returned no text content');
+    throw new AnthropicIntegrationError('bad-response', 'Claude returned no text content');
   }
 
   // Parsear JSON y validar con el schema C10
@@ -161,12 +193,20 @@ Rules:
   try {
     parsed = JSON.parse(textContent.text.trim());
   } catch (err) {
-    throw new Error(`Claude response is not valid JSON: ${(err as Error).message}`);
+    throw new AnthropicIntegrationError(
+      'bad-response',
+      `Claude response is not valid JSON: ${(err as Error).message}`,
+      err
+    );
   }
 
   const result = ClaudeVisionResponseSchema.safeParse(parsed);
   if (!result.success) {
-    throw new Error(`Claude response does not match C10 schema: ${result.error.message}`);
+    throw new AnthropicIntegrationError(
+      'bad-response',
+      `Claude response does not match C10 schema: ${result.error.message}`,
+      result.error
+    );
   }
 
   return result.data;

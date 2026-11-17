@@ -3,7 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { ClaudeVisionResponse } from '@proyecto/shared-types';
+import { ClaudeVisionResponse, UploadResultSchema } from '@proyecto/shared-types';
+import { AnthropicIntegrationError } from '../service/anthropic-error';
 import { createDatabase } from '../service/database';
 import { createUploadRepository } from '../service/upload-repository';
 import { createApp } from '../server';
@@ -285,7 +286,99 @@ describe('POST /api/uploads', () => {
       .attach('file', minimalJpegBuffer(20), { filename: 'test.jpg', contentType: 'image/jpeg' });
 
     expect(res.status).toBe(500);
+    expect(res.body.status).toBe(500);
     expect(res.body.data).toBeNull();
     expect(res.body.error).toBe('Failed to analyze image');
+  });
+  // ---- u3: fallback de baja confianza ----
+  const upJpeg = (token: string) =>
+    request(app)
+      .post('/api/uploads')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', minimalJpegBuffer(30), { filename: 't.jpg', contentType: 'image/jpeg' });
+
+  function expectFallback(res: request.Response, reason: string) {
+    expect(res.status).toBe(202);
+    expect(res.body.error).toBeNull();
+    expect(res.body.status).toBe(202);
+    expect(res.body.data.status).toBe('low_confidence');
+    expect(res.body.data.confidence).toBe('LOW');
+    expect(res.body.data.fallbackReason).toBe(reason);
+    expect(res.body).not.toHaveProperty('data.categories');
+    expect(UploadResultSchema.safeParse(res.body).success).toBe(true);
+  }
+
+  it('LOW confidence — 202 low_confidence con fallbackReason low_confidence_flag y sin categories', async () => {
+    claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, confidence: 'LOW' });
+    expectFallback(await upJpeg(makeJwt()), 'low_confidence_flag');
+  });
+
+  it('LOW confidence — el upload queda registrado en BD (persisted, findById / countByUserId)', async () => {
+    const userId = 'user-low-persist';
+    claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, confidence: 'LOW' });
+    const res = await upJpeg(makeJwt(userId));
+    expectFallback(res, 'low_confidence_flag');
+    expect(repo.countByUserId(userId)).toBe(1);
+    expect(repo.findById(res.body.data.uploadId)).not.toBeNull();
+  });
+
+  it('invalid_schema — menos de 5 categorías → 202 fallback invalid_schema', async () => {
+    claudeClientStub.mockResolvedValueOnce({
+      ...STUB_CLAUDE_RESPONSE,
+      categories: STUB_CLAUDE_RESPONSE.categories.slice(0, 4),
+    });
+    expectFallback(await upJpeg(makeJwt()), 'invalid_schema');
+  });
+
+  it('invalid_schema — score 150 → 202 fallback invalid_schema', async () => {
+    const cats = STUB_CLAUDE_RESPONSE.categories.map((c, i) =>
+      i === 0 ? { ...c, score: 150 } : c
+    );
+    claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, categories: cats });
+    expectFallback(await upJpeg(makeJwt()), 'invalid_schema');
+  });
+
+  it('timeout — AnthropicIntegrationError timeout → fallbackReason timeout', async () => {
+    claudeClientStub.mockRejectedValueOnce(new AnthropicIntegrationError('timeout', 'slow'));
+    expectFallback(await upJpeg(makeJwt()), 'timeout');
+  });
+
+  it('network — AnthropicIntegrationError network → fallbackReason timeout (D-1)', async () => {
+    claudeClientStub.mockRejectedValueOnce(new AnthropicIntegrationError('network', 'down'));
+    expectFallback(await upJpeg(makeJwt()), 'timeout');
+  });
+
+  it('bad-response — AnthropicIntegrationError bad-response → fallbackReason invalid_schema', async () => {
+    claudeClientStub.mockRejectedValueOnce(new AnthropicIntegrationError('bad-response', 'junk'));
+    expectFallback(await upJpeg(makeJwt()), 'invalid_schema');
+  });
+
+  it('MEDIUM válido — 202 ready con 5 categories (no es fallback)', async () => {
+    claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, confidence: 'MEDIUM' });
+    const res = await upJpeg(makeJwt());
+    expect(res.status).toBe(202);
+    expect(res.body.data.status).toBe('ready');
+    expect(res.body.data.confidence).toBe('MEDIUM');
+    expect(res.body.data.categories).toHaveLength(5);
+    expect(res.body.data).not.toHaveProperty('fallbackReason');
+  });
+
+  it('log de fallback — console.warn solo lleva uploadId y reason (sin buffer ni texto de Claude)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      claudeClientStub.mockResolvedValueOnce({
+        ...STUB_CLAUDE_RESPONSE,
+        confidence: 'LOW',
+        secretRaw: 'RAW-CLAUDE-TEXT',
+      });
+      const res = await upJpeg(makeJwt());
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]).toHaveLength(1);
+      expect(warn.mock.calls[0][0]).toBe(
+        `[uploads] low_confidence uploadId=${res.body.data.uploadId} reason=low_confidence_flag`
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

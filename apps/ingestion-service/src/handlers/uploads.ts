@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
-import { ClaudeVisionResponse } from '@proyecto/shared-types';
+import { ClaudeVisionResponse, UploadResult } from '@proyecto/shared-types';
 import { detectImageKind, kindToExtension, kindToMimeType } from '../service/magic-number';
 import { writeBlob } from '../service/blob-store';
 import { UploadRepository } from '../service/upload-repository';
+import { resolveCritique, CritiqueOutcome } from '../service/critique-outcome';
 
 /** 10 MiB — coincide con MAX_UPLOAD_BYTES en ConfigMap K8s. */
 const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 10485760);
@@ -36,6 +37,8 @@ export interface UploadsRouterDeps {
  *   - Escribe blob a BLOB_DIR, luego inserta en BD
  *   - Llama al cliente Claude Vision (stub o real) para obtener la crítica
  *   - Responde 202 { data: { uploadId, status:"ready", confidence, categories }, error: null, status: 202 }
+ *   - Fallback (LOW, schema inválido, timeout/red): 202 con status "low_confidence", confidence "LOW",
+ *     fallbackReason y SIN categories
  */
 export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): Router {
   const router = Router();
@@ -136,11 +139,12 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
         sizeBytes: req.file.size,
       });
 
-      // Llamar al cliente Claude Vision (stub o real)
-      let critique: ClaudeVisionResponse;
+      // Llamar al cliente Claude Vision (stub o real) y clasificar el resultado (u3)
+      let outcome: CritiqueOutcome;
       try {
-        critique = await claudeClient(buffer);
+        outcome = await resolveCritique(claudeClient, buffer);
       } catch {
+        // Error que no es AnthropicIntegrationError: bug, no baja confianza -> 500
         res.status(500).json({
           data: null,
           error: 'Failed to analyze image',
@@ -148,6 +152,28 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
         });
         return;
       }
+
+      if (outcome.kind === 'fallback') {
+        // Solo uploadId y reason: nunca buffer, API key ni texto crudo de Claude
+        console.warn(
+          `[uploads] low_confidence uploadId=${uploadRecord.uploadId} reason=${outcome.reason}`
+        );
+        // satisfies: tsc comprueba los literales contra el contrato C1 (UploadResult)
+        const body = {
+          data: {
+            uploadId: uploadRecord.uploadId,
+            status: 'low_confidence',
+            confidence: 'LOW',
+            fallbackReason: outcome.reason,
+          },
+          error: null,
+          status: 202,
+        } satisfies UploadResult;
+        res.status(202).json(body);
+        return;
+      }
+
+      const critique = outcome.critique;
 
       // Mapear las categorías de ClaudeVisionResponse al shape de CategoryCritique del contrato C1
       const categories = critique.categories.map((cat) => ({
