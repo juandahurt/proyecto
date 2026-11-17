@@ -558,11 +558,61 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     }
   });
 
+  it('GET 403: no se ejecuta ningún SELECT sobre category_critiques antes de decidir el dueño (F-01)', async () => {
+    // BD y repo propios: se envuelve db.prepare ANTES de crear el repo para registrar el SQL ejecutado.
+    const spyDb = createDatabase(':memory:');
+    const executed: string[] = [];
+    const realPrepare = spyDb.prepare.bind(spyDb) as (sql: string) => unknown;
+    jest.spyOn(spyDb, 'prepare').mockImplementation(((sql: string) => {
+      const stmt = realPrepare(sql) as Record<string, unknown>;
+      return new Proxy(stmt, {
+        get(target, prop) {
+          const v = target[prop as string];
+          if (typeof v === 'function' && ['get', 'all', 'run', 'iterate'].includes(String(prop))) {
+            return (...args: unknown[]) => {
+              executed.push(sql);
+              return (v as (...a: unknown[]) => unknown).apply(target, args);
+            };
+          }
+          return typeof v === 'function' ? v.bind(target) : v;
+        },
+      });
+    }) as never);
+    const spyRepo = createUploadRepository(spyDb);
+    const spyApp = createApp({ db: spyDb, repo: spyRepo, claudeClient: claudeClientStub });
+    try {
+      const created = await post(USER_A, spyApp);
+      const id = created.body.data.uploadId;
+
+      executed.length = 0;
+      const owner = await request(spyApp)
+        .get(`/api/uploads/${id}`)
+        .set('Authorization', `Bearer ${makeJwt(USER_A)}`);
+      expect(owner.status).toBe(200);
+      // sanity: para el dueño sí se leen las categorías
+      expect(executed.some((q) => q.includes('category_critiques'))).toBe(true);
+
+      executed.length = 0;
+      const intruder = await request(spyApp)
+        .get(`/api/uploads/${id}`)
+        .set('Authorization', `Bearer ${makeJwt(USER_B)}`);
+      expect(intruder.status).toBe(403);
+      expect(executed.length).toBeGreaterThan(0);
+      expect(executed.filter((q) => q.includes('category_critiques'))).toEqual([]);
+    } finally {
+      jest.restoreAllMocks();
+      spyDb.close();
+    }
+  });
+
   it('GET 404 Not Found: UUID inexistente, ids que no son UUID y upload propio sin crítica', async () => {
     const missing = await get(crypto.randomUUID(), USER_A);
     expect(missing.status).toBe(404);
     expect(missing.body).toEqual(NOT_FOUND);
-    for (const bad of ['abc', '..%2Fetc%2Fpasswd', '123']) {
+    // Nota: '../etc/passwd' CRUDO lo normaliza el cliente HTTP (la ruta resultante ya no es
+    // /api/uploads/:uploadId) y lo atiende el 404 global; por eso aquí se prueba la forma
+    // codificada (%2F), que sí llega al handler como parámetro. Se añade también la cruda.
+    for (const bad of ['abc', '..%2Fetc%2Fpasswd', '../etc/passwd', '123']) {
       const res = await get(bad, USER_A);
       expect(res.status).toBe(404);
       expect(res.body).toEqual(NOT_FOUND);

@@ -225,7 +225,8 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
       notFound();
       return;
     }
-    const detail = repo.getDetail(uploadId);
+    // Solo la cabecera: las categorías NO se leen hasta confirmar el dueño (AC-4.1).
+    const detail = repo.getDetailHeader(uploadId);
     if (!detail) {
       notFound();
       return;
@@ -244,7 +245,7 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
       confidence: detail.confidence,
       timestamp: detail.timestamp,
     };
-    if (detail.status === 'ready') data.categories = detail.categories;
+    if (detail.status === 'ready') data.categories = repo.getCategories(uploadId);
     else if (detail.fallbackReason) data.fallbackReason = detail.fallbackReason;
     const body = { data, error: null, status: 200 } satisfies UploadDetail;
     res.status(200).json(body);

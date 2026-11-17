@@ -52,8 +52,12 @@ export interface UploadRepository {
   countAll(): number;
   /** Persiste la crítica en una sola transacción. Lanza si algo falla (rollback total). */
   saveCritique(uploadId: string, outcome: CritiqueOutcome): void;
-  /** null si el upload no existe. */
+  /** null si el upload no existe. Incluye las categorías (lectura completa). */
   getDetail(uploadId: string): UploadDetailRecord | null;
+  /** Solo la fila del upload (dueño, estado, timestamp), SIN leer category_critiques. null si no existe. */
+  getDetailHeader(uploadId: string): Omit<UploadDetailRecord, 'categories'> | null;
+  /** Categorías de un upload ordenadas por category_id ASC. Llamar solo tras comprobar el dueño. */
+  getCategories(uploadId: string): CategoryCritique[];
 }
 
 /**
@@ -129,7 +133,7 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
     };
   }
 
-  return {
+  const repo: UploadRepository = {
     create({ userId, storedFilename, mimeType, sizeBytes }) {
       // ID generado server-side — NUNCA viene del request.
       const uploadId = crypto.randomUUID();
@@ -157,7 +161,7 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
       saveTx(uploadId, outcome);
     },
 
-    getDetail(uploadId: string): UploadDetailRecord | null {
+    getDetailHeader(uploadId: string): Omit<UploadDetailRecord, 'categories'> | null {
       const row = detailRowStmt.get(uploadId) as
         | {
             upload_id: string;
@@ -169,12 +173,6 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
           }
         | undefined;
       if (!row) return null;
-      const cats = categoriesStmt.all(uploadId) as {
-        category_id: CategoryCritique['categoryId'];
-        category_name: CategoryCritique['categoryName'];
-        score: number;
-        feedback: string;
-      }[];
       return {
         uploadId: row.upload_id,
         userId: row.user_id,
@@ -182,13 +180,29 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
         status: row.status,
         confidence: row.confidence,
         fallbackReason: row.fallback_reason,
-        categories: cats.map((c) => ({
-          categoryId: c.category_id,
-          categoryName: c.category_name,
-          score: c.score,
-          feedback: c.feedback,
-        })),
       };
     },
+
+    getCategories(uploadId: string): CategoryCritique[] {
+      const cats = categoriesStmt.all(uploadId) as {
+        category_id: CategoryCritique['categoryId'];
+        category_name: CategoryCritique['categoryName'];
+        score: number;
+        feedback: string;
+      }[];
+      return cats.map((c) => ({
+        categoryId: c.category_id,
+        categoryName: c.category_name,
+        score: c.score,
+        feedback: c.feedback,
+      }));
+    },
+
+    getDetail(uploadId: string): UploadDetailRecord | null {
+      const header = repo.getDetailHeader(uploadId);
+      if (!header) return null;
+      return { ...header, categories: repo.getCategories(uploadId) };
+    },
   };
+  return repo;
 }
