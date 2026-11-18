@@ -10,7 +10,6 @@ COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/auth-middleware/package.json ./packages/auth-middleware/
 COPY apps/progress-service/package.json ./apps/progress-service/
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN npm ci
 
 COPY packages/shared-types/ ./packages/shared-types/
