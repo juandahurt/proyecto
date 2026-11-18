@@ -7,6 +7,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const SIG_RE = /^[0-9a-f]{64}$/i;
 const EXP_RE = /^[0-9]+$/;
 
+const isStr = (v: unknown): v is string => typeof v === 'string';
+
 /** HMAC-SHA256 (hex) de `thumbnail:<uploadId>:<exp>`: el prefijo separa el dominio de la firma. */
 function computeSignature(uploadId: string, exp: number | string, key: string): string {
   return crypto.createHmac('sha256', key).update(`thumbnail:${uploadId}:${exp}`).digest('hex');
@@ -35,9 +37,9 @@ export function verifyThumbnailSignature(args: {
 }): boolean {
   try {
     const { uploadId, exp, sig, key, nowMs } = args;
-    if (typeof uploadId !== 'string' || !UUID_RE.test(uploadId)) return false;
-    if (typeof exp !== 'string' || !EXP_RE.test(exp)) return false;
-    if (typeof sig !== 'string' || !SIG_RE.test(sig)) return false;
+    if (!isStr(uploadId) || !UUID_RE.test(uploadId)) return false;
+    if (!isStr(exp) || !EXP_RE.test(exp)) return false;
+    if (!isStr(sig) || !SIG_RE.test(sig)) return false;
     const expNum = Number(exp);
     if (!Number.isSafeInteger(expNum) || expNum <= 0) return false;
 
