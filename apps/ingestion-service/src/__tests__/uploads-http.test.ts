@@ -782,7 +782,9 @@ describe('u5: GET /api/uploads (listado del usuario)', () => {
       expect(i.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     }
     expect(items[0].timestamp >= items[1].timestamp).toBe(true);
-    const detail = await get(second.body.data.uploadId, USER_A);
+    const detail = await request(app)
+      .get(`/api/uploads/${second.body.data.uploadId}`)
+      .set('Authorization', `Bearer ${makeJwt(USER_A)}`);
     expect(UploadDetailSchema.safeParse(detail.body).success).toBe(true);
     expect(detail.body.data.timestamp).toBe(items[0].timestamp);
   });
