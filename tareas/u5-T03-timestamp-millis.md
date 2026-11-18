@@ -71,7 +71,7 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
   npm test -w apps/ingestion-service -- --testPathPattern=database --no-coverage --verbose 2>&1 | grep -E "(migra|idempot|formato viejo|milisegundos|T00|no toca|instante)"
   ```
 
-  Esperado: tests en verde. El test crea una BD con **filas en formato viejo** insertadas por SQL directo (`'2026-11-18 02:33:19'`), abre la BD con `createDatabase` y afirma: el valor pasa a `2026-11-18T02:33:19.000Z`; **abrir una segunda vez** no cambia ningún valor; las columnas `status`, `confidence`, `stored_filename`, `user_id` y las filas de `category_critiques` quedan idénticas; una fila ya en formato nuevo (con `.123Z`) **no** se modifica. **Criterio de mutación:** si se borra el `WHERE timestamp NOT LIKE '%T%'`, el test de «ya en formato nuevo» y el de idempotencia deben **fallar**; si se borra la migración entera, el de conversión debe fallar.
+  Esperado: tests en verde. El test crea una BD con **filas en formato viejo** insertadas por SQL directo (`'2026-11-18 02:33:19'`), abre la BD con `createDatabase` y afirma: el valor pasa a `2026-11-18T02:33:19.000Z`; **abrir una segunda vez** no cambia ningún valor; las columnas `status`, `confidence`, `stored_filename`, `user_id` y las filas de `category_critiques` quedan idénticas; una fila ya en formato nuevo (con `.123Z`) **no** se modifica. **Criterio de mutación:** si se borra la migración entera, el test de conversión debe **fallar**. (Fix de especificación, ronda 1: se retiró el criterio sobre el `WHERE timestamp NOT LIKE '%T%'`; `strftime` sobre un valor ya en formato nuevo devuelve el mismo valor, así que el `WHERE` es una optimización y no una condición observable.)
 
 - [ ] **CA-2** — `create` escribe milisegundos explícitos y `toIsoUtc` entiende ambos formatos sin `Invalid Date`.
 
@@ -131,7 +131,7 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
   ```bash
   git diff main...HEAD --name-only | grep -E "(^|/)package(-lock)?\.json$" && echo "FAIL: dependencias tocadas" && exit 1 || echo "no dependency changes"
   git diff main...HEAD --name-only | grep -E "^packages/" && echo "FAIL: packages tocados" && exit 1 || echo "packages intactos"
-  git diff main...HEAD -- apps/ingestion-service/src/service/database.ts | grep -E "^[+-].*(CREATE TABLE|DEFAULT CURRENT_TIMESTAMP|DROP |RENAME)" && echo "FAIL: schema alterado" && exit 1 || echo "schema sin alterar"
+  git diff main...HEAD -- apps/ingestion-service/src/service/database.ts | grep -E "^[+-]" | grep -vE "^[+-]\s*(//|\*|/\*)" | grep -E "(CREATE TABLE|DEFAULT CURRENT_TIMESTAMP|DROP |RENAME)" && echo "FAIL: schema alterado" && exit 1 || echo "schema sin alterar"
   ```
 
   Esperado: imprime `no dependency changes`, `packages intactos` y `schema sin alterar`.
@@ -166,13 +166,13 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
 
   ```bash
   # ANTES (imagen u5-T01): contar filas viejas y guardar ids+orden del listado de un usuario existente o nuevo
-  kubectl exec deploy/ingestion-service -- node -e 'const D=require("better-sqlite3");const db=new D("/app/data/db/ingestion.db",{readonly:true});console.log(db.prepare("SELECT COUNT(*) n FROM uploads WHERE timestamp NOT LIKE \"%T%\"").get(), db.prepare("SELECT COUNT(*) n FROM uploads").get())'
+  kubectl exec deploy/ingestion-service -- node -e 'const D=require("better-sqlite3");const db=new D("/app/data/db/ingestion.db",{readonly:true});console.log(db.prepare("SELECT COUNT(*) n FROM uploads WHERE timestamp NOT LIKE ?").get("%T%"), db.prepare("SELECT COUNT(*) n FROM uploads").get())'
   kind load docker-image ingestion-service:u5-T03
   kubectl apply -f k8s/ingestion/deployment.yaml
   kubectl rollout status deployment/ingestion-service --timeout=180s
   kubectl get deployment ingestion-service -o jsonpath='{.spec.template.spec.containers[0].image} {.spec.strategy.type}{"\n"}'
   # DESPUÉS: 0 filas viejas; mismo total; los instantes de las filas viejas terminan en .000Z
-  kubectl exec deploy/ingestion-service -- node -e 'const D=require("better-sqlite3");const db=new D("/app/data/db/ingestion.db",{readonly:true});console.log(db.prepare("SELECT COUNT(*) n FROM uploads WHERE timestamp NOT LIKE \"%T%\"").get(), db.prepare("SELECT COUNT(*) n FROM uploads").get(), db.prepare("SELECT timestamp FROM uploads ORDER BY rowid LIMIT 3").all())'
+  kubectl exec deploy/ingestion-service -- node -e 'const D=require("better-sqlite3");const db=new D("/app/data/db/ingestion.db",{readonly:true});console.log(db.prepare("SELECT COUNT(*) n FROM uploads WHERE timestamp NOT LIKE ?").get("%T%"), db.prepare("SELECT COUNT(*) n FROM uploads").get(), db.prepare("SELECT timestamp FROM uploads ORDER BY rowid LIMIT 3").all())'
   # port-forward en segundo plano (ingestion 3200, identity 3100); registrar un usuario NUEVO con email único; DOS POST seguidos:
   curl -s -w " %{http_code}\n" http://localhost:3200/api/uploads -H "Authorization: Bearer $JWT"          # 200: 2 items, el último POST primero, timestamps con milisegundos
   kubectl rollout restart deployment/ingestion-service && kubectl rollout status deployment/ingestion-service --timeout=180s
