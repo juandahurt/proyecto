@@ -178,6 +178,10 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
       ['sin exp', (t) => t.replace(/exp=\d+&/, '')],
       ['sin sig', (t) => t.replace(/&sig=[0-9a-f]+/, '')],
       ['sin query', (t) => t.split('?')[0]],
+      [
+        'sig en mayúsculas (firmada de verdad)',
+        (t) => t.replace(/sig=([0-9a-f]+)/, (_m, h) => `sig=${h.toUpperCase()}`),
+      ],
     ];
     it.each(cases)('%s', async (_n, mutate) => {
       const a = await issue();

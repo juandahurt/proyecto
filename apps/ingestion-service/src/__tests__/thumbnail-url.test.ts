@@ -76,26 +76,46 @@ describe('verifyThumbnailSignature', () => {
     expect(verifyThumbnailSignature({ ...base, sig })).toBe(false);
   });
 
+  // La sig se calcula DE VERDAD sobre los valores raros (misma cadena que firma el módulo):
+  // así solo la validación de formato puede rechazarlos, no una discrepancia de firma.
+  const signedFor = (uploadId: string, exp: string) =>
+    crypto.createHmac('sha256', KEY).update(`thumbnail:${uploadId}:${exp}`).digest('hex');
+
+  it('sanidad: la sig calculada por el test coincide con la del módulo (verify la acepta)', () => {
+    expect(verifyThumbnailSignature({ ...base, sig: signedFor(ID, p.exp) })).toBe(true);
+  });
+
+  // Varios valores, con firma válida, serían aceptados por Number() si faltara EXP_RE (y futuros).
   it.each([
     ['abc'],
     ['-5'],
     ['1e9'],
+    ['17000009e2'],
+    ['1.7000009e9'],
     [' 1700000900'],
     ['1700000900 '],
+    ['+1700000900'],
+    ['1700000900.5'],
     [''],
     ['0'],
-    ['+5'],
-    ['1.5'],
-  ])('exp inválido %p → false sin lanzar', (exp) => {
-    expect(verifyThumbnailSignature({ ...base, exp })).toBe(false);
+  ])('exp inválido %p con sig realmente firmada → false sin lanzar', (exp) => {
+    expect(verifyThumbnailSignature({ ...base, exp, sig: signedFor(ID, exp) })).toBe(false);
   });
 
-  it.each([['abc'], ['../etc/passwd'], [''], [ID.toUpperCase() + 'x']])(
-    'uploadId no UUID %p → false sin lanzar',
+  it.each([['abc'], ['../etc/passwd'], [''], [ID.toUpperCase() + 'x'], [ID + ' '], [' ' + ID]])(
+    'uploadId no UUID %p con sig realmente firmada → false sin lanzar',
     (uploadId) => {
-      expect(verifyThumbnailSignature({ ...base, uploadId })).toBe(false);
+      expect(verifyThumbnailSignature({ ...base, uploadId, sig: signedFor(uploadId, p.exp) })).toBe(
+        false
+      );
     }
   );
+
+  it('sig en mayúsculas, realmente firmada → false (una sola codificación válida por URL)', () => {
+    const lower = signedFor(ID, p.exp);
+    expect(verifyThumbnailSignature({ ...base, sig: lower })).toBe(true);
+    expect(verifyThumbnailSignature({ ...base, sig: lower.toUpperCase() })).toBe(false);
+  });
 
   it('frontera de expiración: válida en exp-1, inválida en exp y exp+1', () => {
     const expMs = Number(p.exp) * 1000;
