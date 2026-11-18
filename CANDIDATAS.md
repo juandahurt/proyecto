@@ -252,6 +252,30 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** `USER node` y `npm ci --omit=dev` (o `npm prune --omit=dev`) en la etapa runtime, en los tres servicios, en una tarea de endurecimiento.
 
+### C-46 — `npm audit --audit-level=high` falla en main (`tar` critical, `@mapbox/node-pre-gyp` high)
+
+**Origen:** informes de ronda de u5-T02 (ronda 2) y u5-T03 (ronda 1). Cadena transitiva de `better-sqlite3` (identity y trust). Verificado por el orquestador sobre `main`: 8 vulnerabilidades (6 moderate, 1 high, 1 critical); `npm audit fix` las arregla.
+
+**Qué sería:** tarea propia (actualizar o forzar `tar` en el lockfile, sin tocar código). La regla de `project.md` bloquea todo merge mientras falle. **Decisión del humano:** va antes de los PRs de u5-T02 y u5-T03.
+
+### C-47 — La migración de u5-T03 asigna NULL a una fila no parseable y el pod entra en crashloop
+
+**Origen:** informe de `revisiones/u5-T03/ronda-1.md`. Si `strftime` no puede parsear una fila vieja, el `UPDATE` pone NULL, viola `NOT NULL` y `createDatabase` lanza al arrancar. Defecto de **mi** especificación (migración prescrita por la tarea). Hoy no ocurre: todas las filas vienen de `CURRENT_TIMESTAMP`.
+
+**Qué sería:** `WHERE timestamp NOT LIKE '%T%' AND strftime(...) IS NOT NULL`, con un test de fila no parseable.
+
+### C-48 — ingestion-service no atiende SIGTERM
+
+**Origen:** F-01 de `revisiones/u5-T03/ronda-1.md`. Agota los 30 s de gracia y sigue respondiendo durante el apagado; con `Recreate` son unos 30 s de caída extra por despliegue, y permitió que una lectura de verificación saliera del pod viejo.
+
+**Qué sería:** manejador de SIGTERM que cierre el servidor y la BD. Revisar si aplica igual a identity, trust y progress.
+
+### C-49 — Endurecer `toIsoUtc` y los tests de u5-T03 (amarillos F-02, F-03, F-04)
+
+**Origen:** `revisiones/u5-T03/ronda-1.md`. (F-02) la regex de `toIsoUtc` acepta formas híbridas (`...T02:33:19` sin `Z`, `... 02:33:19.123Z`); (F-03) el directorio temporal del caso mezclado se limpia al final del `it` en vez de en `afterEach`; (F-04) el formato `'%Y-%m-%dT%H:%M:%fZ'` está duplicado en `database.ts` y `upload-repository.ts`.
+
+**Qué sería:** una constante compartida, regex estricta por formato y `afterEach` de limpieza. Añadir el filtro redundante `u.status IS NOT NULL` del JOIN de scores a C-42.
+
 ---
 
 ## Cerradas
