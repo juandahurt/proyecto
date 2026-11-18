@@ -10,7 +10,7 @@ import { createUploadRepository, UploadRepository } from '../service/upload-repo
 import { signThumbnailUrl } from '../service/thumbnail-url';
 import { createApp } from '../server';
 
-const JWT_SECRET = 'a-test-secret-for-tests-only';
+const TEST_JWT_VALUE = 'a-test-secret-for-tests-only';
 const KEY = 'test-only-signing-key-0123456789abcdef';
 const T0 = 1_700_000_000_000;
 const USER_A = 'user-a-thumb';
