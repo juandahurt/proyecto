@@ -19,7 +19,7 @@ const FORBIDDEN = { data: null, error: 'Forbidden', status: 403 };
 const NOT_FOUND = { data: null, error: 'Not Found', status: 404 };
 
 const makeJwt = (u: string) =>
-  jwt.sign({ sub: u }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
+  jwt.sign({ sub: u }, TEST_JWT_VALUE, { algorithm: 'HS256', expiresIn: '7d' });
 
 /** JPEG mínimo con bytes variados para que la comparación de buffer sea significativa. */
 function jpeg(): Buffer {
@@ -57,7 +57,7 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
   const origBlob = process.env.BLOB_DIR;
 
   beforeAll(() => {
-    process.env.JWT_SECRET = JWT_SECRET;
+    process.env.JWT_SECRET = TEST_JWT_VALUE;
     blobDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-thumb-test-'));
     outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-thumb-outside-'));
     process.env.BLOB_DIR = blobDir;
