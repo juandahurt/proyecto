@@ -156,12 +156,12 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
 - [ ] **CA-9** — **Sin dependencias nuevas de terceros.** El lockfile solo gana el workspace nuevo; no entra ningún paquete de registro que no estuviera ya.
 
   ```bash
-  git diff main...HEAD -- package-lock.json | grep -E '^\+' | grep -E '"resolved"' && echo "FAIL: paquete de registro nuevo en el lockfile" && exit 1 || echo "sin paquetes nuevos en el lockfile"
+  git diff main...HEAD -- package-lock.json | grep -E '^\+' | grep -E '"resolved"' | grep -v '"resolved": "apps/' && echo "FAIL: paquete de registro nuevo en el lockfile" && exit 1 || echo "sin paquetes nuevos en el lockfile"
   node -e 'const a=require("./apps/progress-service/package.json");const i=require("./apps/identity-service/package.json");const known={...i.dependencies,...i.devDependencies,"@proyecto/shared-types":"*"};for(const[k,v]of Object.entries({...a.dependencies,...a.devDependencies})){if(!(k in known))throw new Error("dependencia que identity no usa: "+k);if(known[k]!==v)throw new Error("versión distinta de "+k+": "+v+" vs "+known[k])}console.log("dependencias solo conocidas, mismas versiones")'
   npm ls better-sqlite3 -w apps/progress-service 2>&1 | grep -E "better-sqlite3" && echo "FAIL: SQLite en progress" && exit 1 || echo "sin SQLite"
   ```
 
-  Esperado: imprime `sin paquetes nuevos en el lockfile`, `dependencias solo conocidas, mismas versiones` y `sin SQLite`.
+  (Fix de especificación, ronda 1: npm registra el propio workspace como enlace, `"resolved": "apps/progress-service"`; ese enlace no es un paquete de registro y se excluye.) Esperado: imprime `sin paquetes nuevos en el lockfile`, `dependencias solo conocidas, mismas versiones` y `sin SQLite`.
 
 - [ ] **CA-10** — Lint y Prettier pasan (sin caché de turbo) y turbo ve el workspace nuevo.
 
