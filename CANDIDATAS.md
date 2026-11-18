@@ -210,6 +210,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** incluirlo en el alcance de u13-history-deletion.
 
+### C-37 — `readBlob`: el chequeo `dirname === BLOB_DIR` es redundante con el de nombre
+
+**Origen:** Candidata del revisor en `revisiones/u4-T02/ronda-2.md`. Su mutante sobrevive: con el chequeo de nombre activo, el de `dirname` no cambia ningún resultado (`'.'` da 500 en ambos casos).
+
+**Qué sería:** documentarlo como defensa en profundidad o cubrirlo con un test de `'.'`.
+
+### C-38 — Codificador y revisor comparten scratchpad
+
+**Origen:** Candidata del revisor en `revisiones/u4-T02/ronda-2.md`. En el scratchpad de la sesión aparecieron archivos del otro agente (`thumbnail-url.fixed.ts`, `mut.ts`, `pf-*.pid`), lo que puede contaminar la evidencia.
+
+**Qué sería:** pedirle a cada subagente un subdirectorio propio del scratchpad en el despacho.
+
 ---
 
 ## Cerradas
