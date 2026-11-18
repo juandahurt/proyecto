@@ -222,12 +222,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** `limit`/cursor opcionales con un máximo por defecto. Cuidado con u6: la regresión necesita la serie completa o un criterio explícito de ventana.
 
-### C-41 — `uploads.timestamp` con resolución de segundos
-
-**Origen:** Candidata del codificador y del revisor en `revisiones/u5-T01/ronda-1.md`. `CURRENT_TIMESTAMP` da segundos; el orden lo salva el desempate por `rowid`, pero u6 (regresión temporal) verá empates.
-
-**Qué sería:** guardar milisegundos, lo que exige migración de `database.ts`. Decidir antes de u6.
-
 ### C-42 — Endurecer los tests del listado (F-01, F-02 de u5-T01)
 
 **Origen:** AMARILLOS de `revisiones/u5-T01/ronda-1.md`. (F-01) El filtro `user_id` de la segunda consulta de `listByUser` no tiene test que falle si se quita. (F-02) `UploadListSchema.safeParse` descarta claves extra; usar `.strict()` en el test de fuga de campos.
@@ -251,12 +245,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Origen:** F-06 de `revisiones/u5-T02/ronda-1.md`. identity, ingestion y progress corren con `uid=0`; `node_modules` incluye jest, ts-jest, eslint, turbo y typescript (162 MB en progress).
 
 **Qué sería:** `USER node` y `npm ci --omit=dev` (o `npm prune --omit=dev`) en la etapa runtime, en los tres servicios, en una tarea de endurecimiento.
-
-### C-46 — `npm audit --audit-level=high` falla en main (`tar` critical, `@mapbox/node-pre-gyp` high)
-
-**Origen:** informes de ronda de u5-T02 (ronda 2) y u5-T03 (ronda 1). **Corrección del orquestador:** los informes decían que la cadena venía de `better-sqlite3`; es falso. La cadena real es `identity-service → bcrypt@5.1.1 → @mapbox/node-pre-gyp@1.0.11 → tar@6.2.1`. Verificado sobre `main`: 8 vulnerabilidades (6 moderate, 1 high, 1 critical).
-
-**Qué sería:** tarea `u8-T03-bcrypt-audit-fix` (bcrypt 5 → 6, sin `node-pre-gyp` ni `tar`; sin desplegar). Las 6 moderate (`typescript-eslint`, `minimatch`) quedan fuera. La regla de `project.md` bloquea todo merge mientras falle. **Decisión del humano:** va antes de los PRs pendientes. El PR #18 (u5-T02) se fusionó con el audit en rojo, por decisión del humano.
 
 ### C-47 — La migración de u5-T03 asigna NULL a una fila no parseable y el pod entra en crashloop
 
@@ -309,6 +297,14 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 ---
 
 ## Cerradas
+
+### C-41 — `uploads.timestamp` con resolución de segundos
+
+**Cerrada por u5-T03 (PR #20, `ec286dc`):** migración idempotente a milisegundos y escritura explícita en `create`. Quedan C-47 (fila no parseable) y C-49 (endurecer `toIsoUtc`).
+
+### C-46 — `npm audit --audit-level=high` falla en main
+
+**Cerrada por u8-T03 (PR #19, `9571612`):** bcrypt 5 → 6 quita `tar` y `node-pre-gyp` del árbol; `audit exit=0` en main. Quedan 6 moderate (`typescript-eslint`, `minimatch`) y C-52. La imagen nueva de identity aún no está desplegada.
 
 ### C-18 — SQLite efímero vs PVC persistente en `apps/ingestion-service/`
 
