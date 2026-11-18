@@ -108,7 +108,8 @@ export async function callClaudeVision(imageBuffer: Buffer): Promise<ClaudeVisio
   }
 
   // Rama real: llamar a Claude via @anthropic-ai/sdk (importación estática en el módulo)
-  const client = new Anthropic({ apiKey });
+  // maxRetries: 0 — C10 «No retry»: el SDK no reintenta; la espera máxima es el timeout
+  const client = new Anthropic({ apiKey, maxRetries: 0 });
 
   const base64Image = imageBuffer.toString('base64');
 
