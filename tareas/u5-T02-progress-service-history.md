@@ -249,6 +249,10 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
   Esperado: Secret `jwt-secret` existe (valor no mostrado); imagen `progress-service:u5-T02 RollingUpdate`; pod `true`; Service puerto `3400`; **`items idénticos: true n=2`** (orden descendente); `200` para B con **1** item aunque mande `?userId=`; `401` sin token y con token basura; `/health` `200`; `0` líneas con `bearer` y `0` con ids en los logs.
   Cerrar los port-forward al terminar (el PID 4456 es del humano: no lo toques). El **solo** `kubectl apply` permitido es `-f k8s/progress/`. **No** escales ni reinicies ingestion (los casos 502/504 se prueban en tests con el servidor falso).
 
+  **Fix de especificación (ronda 2, error del orquestador): CA-14 se parte en dos.** Mezclaba el despliegue con el E2E de usuarios, que son autorizaciones distintas.
+  - **CA-14a (codificador, autorizado por el humano para progress-service):** de `kubectl get secret` a `kubectl get svc`, más la lectura de vuelta de imagen (config digest de `docker save` == `crictl inspecti` en `kind-control-plane` == `imageRef` del pod, y `imageID` distinto del de la ronda 1), `/health` `200`, `401` sin token y con token basura, y `grep -ci bearer` de los logs `0`. No requiere usuarios.
+  - **CA-14b (revisor o humano, solo con autorización de port-forward a identity y registro de usuarios `*.test`):** las líneas que usan `$JWT_A`, `$JWT_B` y `$ID_A` (`items idénticos: true n=2`, aislamiento de B, `?userId=` ignorado, `0` ids en los logs). Si el sistema deniega el permiso, se reporta como **no verificable** y no se esquiva.
+
 - [ ] **CA-15** — Sin secretos en el diff ni en el árbol.
 
   ```bash
