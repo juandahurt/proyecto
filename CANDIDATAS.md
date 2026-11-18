@@ -108,12 +108,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** en `eslint.config.js` de la raíz, añadir al override de `@typescript-eslint/no-unused-vars`: `{ "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }`. Eliminación de una clase entera de warnings; patrón trivial que estabiliza el lint output.
 
-### C-18 — SQLite efímero vs PVC persistente en `apps/ingestion-service/`
-
-**Origen:** Observación del revisor de u1-T01 ronda 1 + Notas explícitas de la tarea u1-T01. `/app/data/blobs/` monta un PVC (persistente); `/app/data/ingestion.db` vive en el filesystem efímero del contenedor. Al reiniciar el pod, los blobs persisten pero la BD se pierde — los registros se recrean desde cero, dejando los blobs huérfanos del upload previo. Documentado como deuda consciente ("persistencia real de la DB llega cuando se migre a PostgreSQL en una tarea aparte"). Se ve el síntoma en CA-18 del revisor: 4 blobs preexistentes vs 1 fila en la BD tras el E2E fresco.
-
-**Qué sería:** o bien montar el SQLite dentro del mismo PVC (mínimo esfuerzo pero adiós a cualquier escala futura), o migrar a PostgreSQL desplegado en el cluster (patrón que ya exigirá u2+). Mejor opción: posponer hasta u2-T01 cuando el schema real del ingestion crezca; aquí es higiene no bloqueante.
-
 ### C-19 — Decisión arquitectónica: ¿`coverage/**` vive en `.gitignore` o en `eslint.config.js`?
 
 **Origen:** F-02 ronda 1 de u1-T01 (AMARILLO). El codificador modificó `eslint.config.js` para ignorar `coverage/**` + `**/coverage/**`. El revisor correctamente notó que el cambio NO era estrictamente necesario (los `warning` de "Unused eslint-disable directive" sobre `lcov-report/*.js` no rompían CA-15), pero tampoco rompe nada y es defensivo. Queda como decisión de arquitectura del equipo: ¿esto vive en `.gitignore` (ya está allí), en `eslint.config.js`, o en ambos (DRY-en-ambos puede ser deseable para proteger linters diferentes)?
@@ -149,12 +143,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Origen:** Revisor de u3-T01 ronda 1. Hay un `kubectl port-forward svc/trust-service 3300:3300` (PID 4456) abierto desde el 2026-11-16 18:57, de una ola anterior. Misma clase de higiene que C-05.
 
 **Qué sería:** matarlo (`kill 4456`) y cerrar siempre los port-forward al terminar un smoke test. No lo hace el orquestador: es el entorno del humano.
-
-### C-25 — Tipar con `satisfies UploadResult` el body `ready` de `handlers/uploads.ts`
-
-**Origen:** F-06 ronda 2 de u3-T01 (AMARILLO, código heredado de u2). u3 tipó el body de fallback con `satisfies UploadResult`, pero el body `ready` sigue sin tipar: `status:'ready'` no lo comprueba el compilador contra el contrato C1.
-
-**Qué sería:** añadir `satisfies UploadResult` al body `ready`. Una línea; simétrico con el de fallback.
 
 ### C-26 — La receta de CA-14 asume un usuario `test@example.com` que ya no existe
 
@@ -196,4 +184,10 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 ## Cerradas
 
-_Ninguna por ahora._
+### C-18 — SQLite efímero vs PVC persistente en `apps/ingestion-service/`
+
+**Cerrada por u4-T01 (PR #14, `f42af66`):** la BD SQLite vive ahora en el PVC `ingestion-blobs` (`subPath: db`, `DB_PATH=/app/data/db/ingestion.db`). Quedan como residuo C-27 y C-28.
+
+### C-25 — Tipar con `satisfies UploadResult` el body `ready` de `handlers/uploads.ts`
+
+**Cerrada por u4-T01 (PR #14, `f42af66`):** el body `ready` se tipa con `satisfies UploadResult`, simétrico con el de fallback.
