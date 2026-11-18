@@ -276,6 +276,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** una constante compartida, regex estricta por formato y `afterEach` de limpieza. Añadir el filtro redundante `u.status IS NOT NULL` del JOIN de scores a C-42.
 
+### C-50 — Endurecer los tests de ProgressService (amarillos A-01 y A-03 de u5-T02 ronda 2)
+
+**Origen:** `revisiones/u5-T02/ronda-2.md`. (A-01) el espía de logs de `history.test.ts` solo mira `log`, `warn` y `error`: sobreviven `console.info` del userId en el 200 y `console.debug` del JWT en el cliente (y un `process.stdout.write`); (A-03) las redirecciones se prueban solo con 302, sin 301 ni 307.
+
+**Qué sería:** ampliar el espía a `info`, `debug` y `stdout.write`, y parametrizar el test de redirección con 301/302/307. La bitácora de u5-T02 (Ronda 2) afirma «mismo dist» que la ronda 1, imposible tras cambiar `src` (A-02): el informe de la ronda 2 la sustituye.
+
 ---
 
 ## Cerradas
