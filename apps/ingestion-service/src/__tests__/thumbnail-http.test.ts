@@ -240,6 +240,7 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
       // '../secret' relativo a BLOB_DIR apunta a un hermano; se coloca el señuelo allí también
       const sibling = path.join(path.dirname(blobDir), 'secret');
       fs.writeFileSync(sibling, 'DECOY-CONTENT-SIBLING');
+      const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
       try {
         const evil = kind === 'ABS' ? decoyPath : '../secret';
         const id = crypto.randomUUID();
@@ -267,6 +268,7 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
         expect(res.body).toEqual({ data: null, error: 'Failed to read file', status: 500 });
         expect(res.text).not.toContain('DECOY');
       } finally {
+        errSpy.mockRestore();
         fs.rmSync(sibling, { force: true });
       }
     }
