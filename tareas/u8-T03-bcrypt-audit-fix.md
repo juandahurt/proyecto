@@ -160,6 +160,17 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno.
 
   Esperado: cada commit contiene solo los archivos que nombra su mensaje; ninguno incluye el shard `aidlc/spaces/default/intents/260925-feature/audit/typewriter-local-*.md`.
 
+### Fix de especificación (ronda 1, errores del orquestador)
+
+El codificador encontró ocho desviaciones; seis eran defectos míos. Esta es la lectura vigente de los criterios:
+
+- **CA-3:** `node-addon-api` **sí** puede aparecer en `changed` (bcrypt 6 pide otra versión de esa transitiva, ya presente en el lockfile). `changed` admite exactamente `node_modules/bcrypt`, `node_modules/@types/bcrypt` y `node_modules/node-addon-api` (más, si npm lo exige, la entrada del workspace); `added` admite `node_modules/node-gyp-build`.
+- **CA-4:** el comando literal sale con exit 1 por el umbral global de cobertura al filtrar un solo archivo (3,61 % < 80 %). Usar `npm test -w apps/identity-service -- password --coverage=false`. La cobertura la mide CA-6.
+- **CA-5, prettier:** `npx prettier --check .` falla **en `main`** en 5 archivos ajenos a la tarea (`bitacoras/WS-T01.md`, `revisiones/WS-T01/ronda-1.md`, `revisiones/WS-T01/ronda-2.md`, `tareas/WS-T01-scaffold-monorepo.md`, `tareas/WS-T02-endpoint-http-health.md`). El criterio vigente es sobre lo que toca la rama: `git diff main...HEAD --name-only | xargs npx prettier --check`, que debe salir limpio. Va como candidata C-51.
+- **CA-5, conteos:** los de la tarea estaban desactualizados (ingestion da 194 en `main`, no 206). El criterio es «igual que `main`, más los tests nuevos»; identity: los de `main` + 2.
+- **Instalación:** `-D` es global en npm y no se puede mezclar con bcrypt en una sola línea. Vale hacerlo en dos comandos (`npm install bcrypt@^6.0.0 -w apps/identity-service` y `npm install @types/bcrypt@^6.0.0 -D -w apps/identity-service`), siempre que el manifiesto quede como pide CA-2.
+- **Nombres y smoke:** las funciones de `password.ts` se llaman `hash` y `compare` (no `hashPassword`/`comparePassword`). El smoke de CA-7 se adapta a identity: puerto 3100, sin `INGESTION_URL`.
+
 ---
 
 ## Plan de pruebas

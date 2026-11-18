@@ -282,6 +282,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** ampliar el espía a `info`, `debug` y `stdout.write`, y parametrizar el test de redirección con 301/302/307. La bitácora de u5-T02 (Ronda 2) afirma «mismo dist» que la ronda 1, imposible tras cambiar `src` (A-02): el informe de la ronda 2 la sustituye.
 
+### C-51 — `prettier --check .` falla en `main` en 5 archivos de WS-T01/WS-T02
+
+**Origen:** `bitacoras/u8-T03.md` (verificado por el orquestador sobre `main`). Fallan `bitacoras/WS-T01.md`, `revisiones/WS-T01/ronda-1.md`, `revisiones/WS-T01/ronda-2.md`, `tareas/WS-T01-scaffold-monorepo.md` y `tareas/WS-T02-endpoint-http-health.md`.
+
+**Qué sería:** `prettier --write` sobre esos 5 archivos (solo documentación) o excluirlos en `.prettierignore`. Mientras tanto los CA de prettier se miden sobre `git diff main...HEAD --name-only`. Plantilla: el CA de CA-4 con `--coverage=false` al filtrar un archivo.
+
 ---
 
 ## Cerradas
