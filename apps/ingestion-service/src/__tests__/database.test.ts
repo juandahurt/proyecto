@@ -170,4 +170,90 @@ describe('createDatabase u4: category_critiques y migración', () => {
     expect(() => ins.run('c3', 'CAT-1', null)).not.toThrow();
     db.close();
   });
+  describe('migración de timestamp a milisegundos (u5-T03)', () => {
+    const OLD_SCHEMA = `
+      CREATE TABLE uploads (
+        upload_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        confidence TEXT,
+        stored_filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL
+      );
+    `;
+    type Snap = Record<string, unknown>[];
+    const snapshot = (db: Database.Database): { uploads: Snap; critiques: Snap } => ({
+      uploads: db
+        .prepare(
+          'SELECT upload_id, user_id, confidence, stored_filename, status, fallback_reason, mime_type, size_bytes FROM uploads ORDER BY upload_id'
+        )
+        .all() as Snap,
+      critiques: db.prepare('SELECT * FROM category_critiques ORDER BY critique_id').all() as Snap,
+    });
+    const stamps = (db: Database.Database): string[] =>
+      (
+        db.prepare('SELECT timestamp FROM uploads ORDER BY upload_id').all() as {
+          timestamp: string;
+        }[]
+      ).map((r) => r.timestamp);
+
+    let tmpDir: string;
+    let dbPath: string;
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-db-mig-'));
+      dbPath = path.join(tmpDir, 'mig.db');
+      const old = new Database(dbPath);
+      old.exec(OLD_SCHEMA);
+      const ins = old.prepare(
+        "INSERT INTO uploads (upload_id, user_id, timestamp, confidence, stored_filename, mime_type, size_bytes) VALUES (?, 'u1', ?, 'HIGH', 'f.jpg', 'image/jpeg', 7)"
+      );
+      ins.run('a-old', '2026-11-18 02:33:19');
+      ins.run('b-new', '2026-11-18T05:00:00.123Z');
+      ins.run('c-old-midnight', '2026-11-18 00:00:00');
+      old.close();
+    });
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('migra el formato viejo a milisegundos conservando el instante', () => {
+      const db = createDatabase(dbPath);
+      expect(stamps(db)).toEqual([
+        '2026-11-18T02:33:19.000Z',
+        '2026-11-18T05:00:00.123Z',
+        '2026-11-18T00:00:00.000Z',
+      ]);
+      db.close();
+    });
+
+    it('es idempotente: abrir una segunda vez no cambia ningún valor', () => {
+      const first = createDatabase(dbPath);
+      const before = stamps(first);
+      first.close();
+      const second = createDatabase(dbPath);
+      expect(stamps(second)).toEqual(before);
+      second.close();
+    });
+
+    it('una fila ya en formato nuevo (milisegundos) no se modifica', () => {
+      const db = createDatabase(dbPath);
+      expect(stamps(db)[1]).toBe('2026-11-18T05:00:00.123Z');
+      db.close();
+    });
+
+    it('no toca otras columnas ni category_critiques', () => {
+      const pre = new Database(dbPath);
+      pre.exec(
+        "ALTER TABLE uploads ADD COLUMN status TEXT; ALTER TABLE uploads ADD COLUMN fallback_reason TEXT; UPDATE uploads SET status = 'ready' WHERE upload_id = 'a-old';" +
+          'CREATE TABLE category_critiques (critique_id TEXT PRIMARY KEY, upload_id TEXT NOT NULL REFERENCES uploads (upload_id), category_id TEXT NOT NULL, category_name TEXT NOT NULL, score INTEGER, feedback TEXT NOT NULL, UNIQUE (upload_id, category_id));' +
+          "INSERT INTO category_critiques VALUES ('k1','a-old','CAT-1','Composition',50,'fb');"
+      );
+      const before = snapshot(pre);
+      pre.close();
+      const db = createDatabase(dbPath);
+      expect(snapshot(db)).toEqual(before);
+      db.close();
+    });
+  });
 });

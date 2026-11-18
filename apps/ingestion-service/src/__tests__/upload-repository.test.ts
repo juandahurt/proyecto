@@ -1,3 +1,7 @@
+import Database from 'better-sqlite3';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { createDatabase } from '../service/database';
 import { createUploadRepository } from '../service/upload-repository';
 
@@ -291,6 +295,115 @@ describe('UploadRepository', () => {
       expect(r.listByUser('u1')).toHaveLength(50);
       expect(calls).toEqual([true, true]);
       local.close();
+    });
+  });
+  describe('timestamp con milisegundos (u5-T03)', () => {
+    const mk = (userId = 'u1') =>
+      repo.create({ userId, storedFilename: 'f.jpg', mimeType: 'image/jpeg', sizeBytes: 1 });
+    const ready = {
+      kind: 'ready' as const,
+      critique: {
+        confidence: 'HIGH' as const,
+        categories: (['CAT-1', 'CAT-2', 'CAT-3', 'CAT-4', 'CAT-5'] as const).map((id) => ({
+          id,
+          name: (
+            {
+              'CAT-1': 'Composition',
+              'CAT-2': 'Proportions',
+              'CAT-3': 'Line Quality',
+              'CAT-4': 'Values (Shading)',
+              'CAT-5': 'Perspective',
+            } as const
+          )[id],
+          score: 50,
+          feedback: 'fb',
+        })),
+      },
+    };
+    const rawTs = (id: string) =>
+      (
+        db.prepare('SELECT timestamp FROM uploads WHERE upload_id = ?').get(id) as {
+          timestamp: string;
+        }
+      ).timestamp;
+    /** Inserta una fila con timestamp crudo (SQL directo) y crítica persistida. */
+    const insertRaw = (id: string, ts: string) => {
+      db.prepare(
+        "INSERT INTO uploads (upload_id, user_id, timestamp, stored_filename, mime_type, size_bytes) VALUES (?, 'u1', ?, 'f.jpg', 'image/jpeg', 1)"
+      ).run(id, ts);
+      repo.saveCritique(id, ready);
+    };
+
+    it('create guarda milisegundos explícitos (ISO UTC con Z) en el timestamp crudo', () => {
+      const up = mk();
+      expect(rawTs(up.uploadId)).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    });
+
+    it('getDetailHeader y listByUser devuelven ISO con Z y milisegundos para una fila nueva', () => {
+      const up = mk();
+      repo.saveCritique(up.uploadId, ready);
+      const raw = rawTs(up.uploadId);
+      expect(repo.getDetailHeader(up.uploadId)!.timestamp).toBe(raw);
+      expect(repo.listByUser('u1')[0].timestamp).toBe(raw);
+    });
+
+    it('toIsoUtc entiende ambos formatos: una fila vieja sin migrar produce ISO con .000Z', () => {
+      insertRaw('11111111-1111-4111-8111-111111111111', '2026-11-18 02:33:19');
+      expect(repo.getDetailHeader('11111111-1111-4111-8111-111111111111')!.timestamp).toBe(
+        '2026-11-18T02:33:19.000Z'
+      );
+      expect(repo.listByUser('u1')[0].timestamp).toBe('2026-11-18T02:33:19.000Z');
+    });
+
+    it('un valor basura no devuelve Invalid Date: lanza un Error definido, no RangeError', () => {
+      insertRaw('22222222-2222-4222-8222-222222222222', 'no-es-una-fecha');
+      let caught: unknown;
+      try {
+        repo.getDetailHeader('22222222-2222-4222-8222-222222222222');
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught).not.toBeInstanceOf(RangeError);
+      expect((caught as Error).message).toMatch(/timestamp/i);
+      expect(() => repo.listByUser('u1')).toThrow(/timestamp/i);
+    });
+
+    it('mismo día mezclado: viejo 23:00:00 y nuevos 10:00:00.500 y 23:00:00.250 (tras migrar)', () => {
+      const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-mix-')), 'm.db');
+      const raw = new Database(dbPath);
+      raw.exec(
+        'CREATE TABLE uploads (upload_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, confidence TEXT, stored_filename TEXT NOT NULL, mime_type TEXT NOT NULL, size_bytes INTEGER NOT NULL);' +
+          "INSERT INTO uploads (upload_id,user_id,timestamp,stored_filename,mime_type,size_bytes) VALUES ('old2300','u1','2026-11-18 23:00:00','f','m',1);" +
+          "INSERT INTO uploads (upload_id,user_id,timestamp,stored_filename,mime_type,size_bytes) VALUES ('new1000','u1','2026-11-18T10:00:00.500Z','f','m',1);" +
+          "INSERT INTO uploads (upload_id,user_id,timestamp,stored_filename,mime_type,size_bytes) VALUES ('new2300','u1','2026-11-18T23:00:00.250Z','f','m',1);"
+      );
+      raw.close();
+      const mdb = createDatabase(dbPath);
+      const mrepo = createUploadRepository(mdb);
+      for (const id of ['old2300', 'new1000', 'new2300']) mrepo.saveCritique(id, ready);
+      expect(mrepo.listByUser('u1').map((x) => x.uploadId)).toEqual([
+        'new2300',
+        'old2300',
+        'new1000',
+      ]);
+      mdb.close();
+      fs.rmSync(path.dirname(dbPath), { recursive: true, force: true });
+    });
+
+    it('dos filas con el mismo milisegundo conservan el desempate por rowid DESC', () => {
+      const ids = ['a', 'b', 'c'].map((_, i) => `0000000${i}-0000-4000-8000-000000000000`);
+      for (const id of ids) insertRaw(id, '2026-11-18T12:00:00.123Z');
+      expect(repo.listByUser('u1').map((x) => x.uploadId)).toEqual([...ids].reverse());
+    });
+
+    it('uploads consecutivos: timestamps crecientes (o iguales) y el listado respeta la inserción', () => {
+      const a = mk();
+      repo.saveCritique(a.uploadId, ready);
+      const b = mk();
+      repo.saveCritique(b.uploadId, ready);
+      expect(rawTs(b.uploadId) >= rawTs(a.uploadId)).toBe(true);
+      expect(repo.listByUser('u1').map((x) => x.uploadId)).toEqual([b.uploadId, a.uploadId]);
     });
   });
 });
