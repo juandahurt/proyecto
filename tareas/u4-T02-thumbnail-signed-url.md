@@ -28,7 +28,7 @@
 > - `signThumbnailUrl({ uploadId, key, nowMs })` → `string` con la forma de **ruta relativa** `/api/uploads/<uploadId>/thumbnail?exp=<unixSegundos>&sig=<hex>`, donde
 >   `exp = floor(nowMs/1000) + 900` y `sig` = **HMAC-SHA256** (hex, 64 caracteres) de la cadena `thumbnail:<uploadId>:<exp>` con `key`.
 > - `verifyThumbnailSignature({ uploadId, exp, sig, key, nowMs })` → `boolean`. Devuelve `false` (nunca lanza) si: `uploadId` no es UUID; `exp` no es un entero decimal
->   positivo (solo dígitos); `sig` no son exactamente 64 caracteres hex; la firma no coincide; o `floor(nowMs/1000) >= exp` (expirada: en el segundo `exp` ya no vale).
+>   positivo (solo dígitos); `sig` no son exactamente 64 caracteres hex **en minúscula** (fix de especificación, ronda 1: una sola codificación válida por URL; `UUID_RE` puede seguir siendo insensible a mayúsculas); la firma no coincide; o `floor(nowMs/1000) >= exp` (expirada: en el segundo `exp` ya no vale).
 >   La comparación de firmas usa **`crypto.timingSafeEqual`** sobre buffers de igual longitud (comprobar la longitud **antes**, porque `timingSafeEqual` lanza si difieren).
 >
 > **`apps/ingestion-service/src/service/blob-store.ts`** (modificar, aditivo): añadir `readBlob(storedFilename)` → `Promise<Buffer>` que lee de `BLOB_DIR` (misma resolución que `writeBlob`).
@@ -122,13 +122,14 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
   ```
 
   Esperado: suite en verde con tests con nombre para cada caso anterior (incluida la frontera `exp-1`/`exp`/`exp+1`), `timingSafeEqual` presente, imprime `sin comparación directa de firmas`.
+  **Fix de especificación (ronda 1):** los casos de formato inválido (`exp` mal formado, `uploadId` no UUID, `sig` en mayúsculas) deben usar una `sig` **realmente firmada** (HMAC de la cadena `thumbnail:<id>:<exp>` con esos valores raros) para que **solo** la validación de formato pueda rechazarlos; con una `sig` de otro valor el test pasa por discrepancia de firma y no prueba nada. Criterio de mutación: si se borran las validaciones de formato de `thumbnail-url.ts`, esos tests deben **fallar**.
 
 - [ ] **CA-3** — `GET /api/uploads/:uploadId` del **dueño** devuelve `thumbnailUrl` en `ready` **y** en `low_confidence`; la URL tiene la forma `/api/uploads/<uploadId>/thumbnail?exp=<n>&sig=<64 hex>` con
       `exp` = reloj inyectado + 900; el body completo pasa `UploadDetailSchema.safeParse`. En **403** (otro usuario), **404** (inexistente, id no UUID, sin crítica) y **401** el body **no contiene**
       `thumbnailUrl`, `sig=` ni `exp=` (`JSON.stringify(res.body)`).
 
   ```bash
-  npm test -w apps/ingestion-service -- --testPathPattern=uploads-http --no-coverage --verbose 2>&1 | grep -E "(thumbnailUrl|thumbnail|firmada|signed)"
+  npm test -w apps/ingestion-service -- --testPathPattern="(uploads-http|thumbnail)" --no-coverage --verbose 2>&1 | grep -E "(thumbnailUrl|thumbnail|firmada|signed)"
   ```
 
   Esperado: tests en verde para: ready con URL, low_confidence con URL, `exp` exacto con reloj fijo, y ausencia de URL en 403/404/401.

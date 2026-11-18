@@ -180,6 +180,36 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** envolver ambas lecturas en una transacción de lectura de better-sqlite3 cuando llegue u13 (borrado de historial), para que un borrado concurrente no deje una cabecera sin categorías.
 
+### C-32 — Miniatura redimensionada de verdad
+
+**Origen:** Decisión del humano en u4-T02: `thumbnailUrl` sirve hoy el blob original. Anotada también por el codificador.
+
+**Qué sería:** generar una miniatura real (p. ej. `sharp`). Antes hay que comprobar que el addon nativo funciona en el flujo del `Dockerfile` de ingestion (`node:20-slim` con `python3 make g++`, y el stage runtime copia `node_modules`).
+
+### C-33 — El barrido de secretos de CA-16 depende del nombre de la variable
+
+**Origen:** Candidata del revisor en `revisiones/u4-T02/ronda-1.md` (F-04). El patrón se esquiva renombrando la variable (`JWT_SECRET` → otro nombre).
+
+**Qué sería:** un escáner por valor (gitleaks o trufflehog) en CI, en lugar de grep por nombre. Relacionada con C-29.
+
+### C-34 — CA-15 pasa el valor del Secret por una tubería
+
+**Origen:** Candidata del revisor en `revisiones/u4-T02/ronda-1.md`. `kubectl get secret … -o jsonpath | wc -c` lleva el valor por una tubería, aunque no se muestre.
+
+**Qué sería:** comprobar la existencia y la longitud con `kubectl describe secret` en las plantillas de tarea futuras.
+
+### C-35 — `verify` acepta un `exp` firmado arbitrariamente lejano
+
+**Origen:** Candidata del revisor en `revisiones/u4-T02/ronda-1.md`. Solo es posible con la clave, así que no es explotable hoy.
+
+**Qué sería:** defensa en profundidad: rechazar `exp > now + THUMBNAIL_TTL_SECONDS` en `verifyThumbnailSignature`.
+
+### C-36 — Al borrar un upload (u13) hay que borrar también el blob
+
+**Origen:** Nota del codificador en `bitacoras/u4-T02.md`. Una URL ya emitida seguirá firmada pero dará 404 al desaparecer el blob.
+
+**Qué sería:** incluirlo en el alcance de u13-history-deletion.
+
 ---
 
 ## Cerradas
