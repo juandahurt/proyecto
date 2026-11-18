@@ -222,6 +222,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** pedirle a cada subagente un subdirectorio propio del scratchpad en el despacho.
 
+### C-39 — El barrido de árbol de la plantilla usa `xargs grep` sin `-r`
+
+**Origen:** Candidata del revisor en `revisiones/u3-T02/ronda-1.md`. En `tareas/_plantilla.md` la línea del barrido de árbol no lleva `-r` en `xargs`, y la del diff sí. En macOS da igual; en GNU, con entrada vacía, `grep` leería de stdin.
+
+**Qué sería:** añadir `xargs -r` en la línea del árbol (en macOS BSD `xargs` ya omite la ejecución sin entrada). Menor.
+
 ---
 
 ## Cerradas
