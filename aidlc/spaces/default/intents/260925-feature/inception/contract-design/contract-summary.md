@@ -495,6 +495,8 @@ components:
 
 ## C5: ProgressService → IngestionService — Shared Schema (read-only)
 
+> **SUPERADO (decisión del humano, ola 6, u5-T01).** El MVP no usa PostgreSQL: la BD es SQLite en un PVC `ReadWriteOnce` con un único dueño (ingestion), así que no hay schema compartido ni usuario de solo lectura. C5 pasa a ser un **contrato HTTP**: ProgressService llama a `GET /api/uploads` de ingestion **reenviando el JWT del usuario** (sin endpoint interno, sin token de servicio, sin Secret nuevo). El body es `UploadListSchema` en `packages/shared-types/src/uploads.ts` (items con `uploadId`, `timestamp`, `status`, `confidence`, `scores[{categoryId, score}]` y `fallbackReason?`; orden más reciente primero, sin paginación). Las columnas de abajo siguen siendo la fuente de esos campos y no se renombran. El texto original se conserva como historia.
+
 This boundary is a **PostgreSQL schema dependency**, not an HTTP API. ProgressService has a read-only database user on the `ingestion` schema. There is no HTTP contract here. This is the accepted MVP exception from the Domain Design stage.
 
 ```yaml

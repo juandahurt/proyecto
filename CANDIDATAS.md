@@ -216,6 +216,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** añadir `xargs -r` en la línea del árbol (en macOS BSD `xargs` ya omite la ejecución sin entrada). Menor.
 
+### C-40 — Paginación o `limit` en `GET /api/uploads`
+
+**Origen:** Candidata del codificador y del revisor en `revisiones/u5-T01/ronda-1.md`. El listado devuelve todos los uploads del usuario sin tope.
+
+**Qué sería:** `limit`/cursor opcionales con un máximo por defecto. Cuidado con u6: la regresión necesita la serie completa o un criterio explícito de ventana.
+
+### C-41 — `uploads.timestamp` con resolución de segundos
+
+**Origen:** Candidata del codificador y del revisor en `revisiones/u5-T01/ronda-1.md`. `CURRENT_TIMESTAMP` da segundos; el orden lo salva el desempate por `rowid`, pero u6 (regresión temporal) verá empates.
+
+**Qué sería:** guardar milisegundos, lo que exige migración de `database.ts`. Decidir antes de u6.
+
+### C-42 — Endurecer los tests del listado (F-01, F-02 de u5-T01)
+
+**Origen:** AMARILLOS de `revisiones/u5-T01/ronda-1.md`. (F-01) El filtro `user_id` de la segunda consulta de `listByUser` no tiene test que falle si se quita. (F-02) `UploadListSchema.safeParse` descarta claves extra; usar `.strict()` en el test de fuga de campos.
+
+**Qué sería:** dos aserciones adicionales. Sin cambio de código de producción.
+
 ---
 
 ## Cerradas
