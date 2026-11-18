@@ -7,3 +7,4 @@ export * from './limits';
 export * from './onboarding';
 export * from './policy';
 export * from './uploads';
+export * from './trends';
