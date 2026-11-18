@@ -83,7 +83,7 @@ export interface UploadRepository {
  */
 export function createUploadRepository(db: Database.Database): UploadRepository {
   const insertStmt = db.prepare<[string, string, string, string, number]>(
-    'INSERT INTO uploads (upload_id, user_id, stored_filename, mime_type, size_bytes) VALUES (?, ?, ?, ?, ?)'
+    "INSERT INTO uploads (upload_id, user_id, timestamp, stored_filename, mime_type, size_bytes) VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), ?, ?, ?)"
   );
 
   const findByIdStmt = db.prepare<[string]>('SELECT * FROM uploads WHERE upload_id = ?');
@@ -167,9 +167,18 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
     }
   });
 
-  /** SQLite guarda 'YYYY-MM-DD HH:MM:SS' en UTC sin zona; se expone como ISO con Z. */
-  function toIsoUtc(sqliteTs: string): string {
-    return new Date(`${sqliteTs.replace(' ', 'T')}Z`).toISOString();
+  /**
+   * Acepta el formato nuevo ('YYYY-MM-DDTHH:MM:SS.mmmZ', ms preservados) y el viejo de
+   * SQLite ('YYYY-MM-DD HH:MM:SS', UTC sin zona; se expone con '.000Z'). Cualquier otro
+   * valor lanza un Error definido (nunca RangeError ni 'Invalid Date').
+   */
+  function toIsoUtc(stored: string): string {
+    const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{3}))?Z?$/.exec(stored);
+    const date = m ? new Date(`${m[1]}T${m[2]}.${m[3] ?? '000'}Z`) : null;
+    if (!date || Number.isNaN(date.getTime())) {
+      throw new Error('invalid stored timestamp format');
+    }
+    return date.toISOString();
   }
 
   function rowToUpload(row: UploadRow): Upload {

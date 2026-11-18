@@ -542,7 +542,7 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
       'CAT-4',
       'CAT-5',
     ]);
-    expect(res.body.data.timestamp).toMatch(/Z$/);
+    expect(res.body.data.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(res.body.data.status).toBe('ready');
     expect(res.body.data.confidence).toBe('HIGH');
     expect(res.body.data.thumbnailUrl).toMatch(
@@ -765,6 +765,28 @@ describe('u5: GET /api/uploads (listado del usuario)', () => {
     expect(resC.status).toBe(200);
     expect(resC.body).toEqual({ data: { items: [] }, error: null, status: 200 });
     expect(UploadListSchema.safeParse(resC.body).success).toBe(true);
+  });
+
+  it('GET /api/uploads: dos POST consecutivos dan timestamps con milisegundos, no decrecientes, y el orden es el inverso de inserción', async () => {
+    const first = await post(USER_A);
+    const second = await post(USER_A);
+    const res = await list(USER_A);
+    expect(res.status).toBe(200);
+    expect(UploadListSchema.safeParse(res.body).success).toBe(true);
+    const items = res.body.data.items as { uploadId: string; timestamp: string }[];
+    expect(items.map((i) => i.uploadId)).toEqual([
+      second.body.data.uploadId,
+      first.body.data.uploadId,
+    ]);
+    for (const i of items) {
+      expect(i.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    }
+    expect(items[0].timestamp >= items[1].timestamp).toBe(true);
+    const detail = await request(app)
+      .get(`/api/uploads/${second.body.data.uploadId}`)
+      .set('Authorization', `Bearer ${makeJwt(USER_A)}`);
+    expect(UploadDetailSchema.safeParse(detail.body).success).toBe(true);
+    expect(detail.body.data.timestamp).toBe(items[0].timestamp);
   });
 
   it('GET /api/uploads: no se confunde con el detalle (no responde 404 Not Found)', async () => {
