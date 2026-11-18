@@ -19,7 +19,12 @@ export interface FakeIngestion {
   url: string;
   requests: Recorded[];
   /** Fija la respuesta del siguiente(s) caso. */
-  respond: (status: number, body: string, delayMs?: number) => void;
+  respond: (
+    status: number,
+    body: string,
+    delayMs?: number,
+    headers?: Record<string, string>
+  ) => void;
   close: () => Promise<void>;
 }
 
@@ -29,6 +34,7 @@ export async function startFakeIngestion(): Promise<FakeIngestion> {
   let status = 200;
   let body = '';
   let delay = 0;
+  let extraHeaders: Record<string, string> = {};
   const timers = new Set<NodeJS.Timeout>();
 
   const server = http.createServer((req, res) => {
@@ -44,6 +50,7 @@ export async function startFakeIngestion(): Promise<FakeIngestion> {
       const send = (): void => {
         res.statusCode = status;
         res.setHeader('Content-Type', 'application/json');
+        for (const [k, v] of Object.entries(extraHeaders)) res.setHeader(k, v);
         res.end(body);
       };
       if (delay > 0) {
@@ -60,10 +67,11 @@ export async function startFakeIngestion(): Promise<FakeIngestion> {
   return {
     url: `http://127.0.0.1:${port}`,
     requests,
-    respond: (s, b, d = 0) => {
+    respond: (s, b, d = 0, h = {}) => {
       status = s;
       body = b;
       delay = d;
+      extraHeaders = h;
     },
     close: () =>
       new Promise<void>((resolve) => {

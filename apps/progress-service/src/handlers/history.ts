@@ -41,7 +41,11 @@ export function createHistoryHandler(deps: HistoryDeps): RequestHandler {
         res.status(502).json({ data: null, error: 'Bad upstream response', status: 502 });
         return;
       default:
-        console.warn('[history] upstream error');
+        console.warn(
+          result.status === undefined
+            ? '[history] upstream error'
+            : `[history] upstream error status=${result.status}`
+        );
         res.status(502).json({ data: null, error: 'Upstream unavailable', status: 502 });
     }
   };

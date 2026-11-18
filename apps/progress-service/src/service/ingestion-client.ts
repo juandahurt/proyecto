@@ -4,7 +4,12 @@ export type FetchFn = typeof fetch;
 
 export type UploadListResult =
   | { ok: true; items: UploadListItem[] }
-  | { ok: false; kind: 'unauthenticated' | 'upstream' | 'bad-response' | 'timeout' };
+  | {
+      ok: false;
+      kind: 'unauthenticated' | 'upstream' | 'bad-response' | 'timeout';
+      /** Status HTTP de ingestion, solo si hubo respuesta. */
+      status?: number;
+    };
 
 export interface FetchUploadListParams {
   /** Valor de la cabecera Authorization del usuario, reenviado tal cual. */
@@ -15,10 +20,12 @@ export interface FetchUploadListParams {
 }
 
 function isTimeout(err: unknown): boolean {
+  // Solo TimeoutError: la unica senal es AbortSignal.timeout. Si se anade otra
+  // senal de cancelacion (AbortError), no debe clasificarse como timeout.
   // Duck-typing: DOMException puede venir de otro realm (p. ej. jest) y fallar instanceof Error.
   const name =
     typeof err === 'object' && err !== null ? (err as { name?: unknown }).name : undefined;
-  return name === 'TimeoutError' || name === 'AbortError';
+  return name === 'TimeoutError';
 }
 
 /**
@@ -34,6 +41,8 @@ export async function fetchUploadList(params: FetchUploadListParams): Promise<Up
   try {
     response = await fetchFn(url, {
       method: 'GET',
+      // Un 3xx no se sigue: la unica salida de red es hacia ingestion (AC-4.2).
+      redirect: 'error',
       headers: { Authorization: authorization },
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -42,7 +51,7 @@ export async function fetchUploadList(params: FetchUploadListParams): Promise<Up
   }
 
   if (response.status === 401) return { ok: false, kind: 'unauthenticated' };
-  if (response.status !== 200) return { ok: false, kind: 'upstream' };
+  if (response.status !== 200) return { ok: false, kind: 'upstream', status: response.status };
 
   let json: unknown;
   try {

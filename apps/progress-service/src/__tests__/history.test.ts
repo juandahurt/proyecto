@@ -151,6 +151,55 @@ describe('GET /api/trends/history', () => {
     });
   });
 
+  describe('campos de mas y redirecciones', () => {
+    it('campo de mas en un item y en el envoltorio: 200 y el body no contiene esos campos', async () => {
+      const item = { ...readyItem(ID_1, T1), userId: 'u-interno-xyz' };
+      fake.respond(
+        200,
+        JSON.stringify({ data: { items: [item], extra: 1 }, error: null, status: 200, otro: 'x' })
+      );
+      const res = await request(app())
+        .get('/api/trends/history')
+        .set('Authorization', `Bearer ${makeJwt()}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        data: { items: [readyItem(ID_1, T1)] },
+        error: null,
+        status: 200,
+      });
+      expect(JSON.stringify(res.body)).not.toContain('u-interno-xyz');
+      expect(res.body).not.toHaveProperty('otro');
+      expect(res.body.data).not.toHaveProperty('extra');
+    });
+
+    it('302 a otro host (otro origen): 502 Upstream unavailable y 0 peticiones al destino', async () => {
+      const other = await startFakeIngestion();
+      try {
+        other.respond(200, listBody([readyItem(ID_1, T1)]));
+        fake.respond(302, '', 0, { Location: `${other.url}/api/uploads` });
+        const res = await request(app())
+          .get('/api/trends/history')
+          .set('Authorization', `Bearer ${makeJwt()}`);
+        expect(res.status).toBe(502);
+        expect(res.body).toEqual({ data: null, error: 'Upstream unavailable', status: 502 });
+        expect(other.requests).toHaveLength(0);
+        expect(fake.requests).toHaveLength(1);
+      } finally {
+        await other.close();
+      }
+    });
+
+    it('302 a otro path del mismo origen: 502 y ninguna peticion a ese path', async () => {
+      fake.respond(302, '', 0, { Location: '/api/otra' });
+      const res = await request(app())
+        .get('/api/trends/history')
+        .set('Authorization', `Bearer ${makeJwt()}`);
+      expect(res.status).toBe(502);
+      expect(res.body).toEqual({ data: null, error: 'Upstream unavailable', status: 502 });
+      expect(fake.requests.map((r) => r.url)).toEqual(['/api/uploads']);
+    });
+  });
+
   describe('autenticacion en el servicio', () => {
     it('sin JWT: 401 unauthenticated y ingestion recibe 0 peticiones', async () => {
       const res = await request(app()).get('/api/trends/history');
@@ -262,36 +311,63 @@ describe('GET /api/trends/history', () => {
   });
 
   describe('logs', () => {
-    it('ningun log contiene JWT, userId, uploadId ni cuerpo de ingestion en los casos de error', async () => {
-      const userId = 'user-que-no-debe-filtrarse';
-      const token = makeJwt(userId);
-      const SECRET_BODY = 'cuerpo-interno-de-ingestion-xyz';
-      const cases: Array<[number, string, number]> = [
-        [401, SECRET_BODY, 0],
-        [500, SECRET_BODY, 0],
-        [200, SECRET_BODY, 0],
-        [200, listBody([{ ...readyItem(ID_1, T1), status: 'x' }]), 0],
-      ];
-      for (const [code, body] of cases) {
-        fake.respond(code, body);
-        await request(app()).get('/api/trends/history').set('Authorization', `Bearer ${token}`);
-      }
-      fake.respond(200, listBody([]), 600);
-      await request(app(50)).get('/api/trends/history').set('Authorization', `Bearer ${token}`);
+    const SECRET_BODY = 'cuerpo-interno-de-ingestion-xyz';
+    const userId = 'user-que-no-debe-filtrarse';
+
+    async function runAll(token: string): Promise<{ closed: string }> {
+      const hit = async (code: number, body: string, delay = 0, to = 2000) => {
+        fake.respond(code, body, delay);
+        await request(app(to)).get('/api/trends/history').set('Authorization', `Bearer ${token}`);
+      };
+      // camino 200 (con items reales, incluidos uploadId)
+      await hit(200, listBody([readyItem(ID_1, T1), lowItem(ID_2, T2)]));
+      await hit(200, listBody([]));
+      // todos los casos de error de CA-5
+      await hit(401, SECRET_BODY);
+      for (const code of [500, 503, 403, 404, 418]) await hit(code, SECRET_BODY);
+      await hit(200, SECRET_BODY);
+      await hit(200, JSON.stringify({ data: {}, error: null, status: 200 }));
+      await hit(200, JSON.stringify({ data: { items: [] }, error: null, status: 201 }));
+      const noTs = readyItem(ID_1, T1);
+      delete noTs.timestamp;
+      await hit(200, listBody([noTs]));
+      await hit(200, listBody([{ ...readyItem(ID_1, T1), status: 'x' }]));
+      await hit(200, listBody([]), 600, 50);
       const closed = await closedPortUrl();
       await request(createApp({ ingestionUrl: closed, timeoutMs: 2000 }))
         .get('/api/trends/history')
         .set('Authorization', `Bearer ${token}`);
+      fake.respond(302, '', 0, { Location: '/api/otra' });
+      await request(app()).get('/api/trends/history').set('Authorization', `Bearer ${token}`);
+      return { closed };
+    }
 
+    it('ningun log (camino 200 ni errores de CA-5) contiene JWT, userId, uploadId ni cuerpo de ingestion', async () => {
+      const token = makeJwt(userId);
+      const { closed } = await runAll(token);
       const text = loggedText();
       expect(text).toContain('[history]'); // la espia si ve las marcas
       expect(text).not.toContain(token);
       expect(text.toLowerCase()).not.toContain('bearer');
       expect(text).not.toContain(userId);
       expect(text).not.toContain(ID_1);
+      expect(text).not.toContain(ID_2);
       expect(text).not.toContain(SECRET_BODY);
       expect(text).not.toContain(fake.url);
       expect(text).not.toContain(closed);
+    });
+
+    it('marca con status cuando ingestion respondio, sin status si no hubo respuesta', async () => {
+      const token = makeJwt(userId);
+      fake.respond(503, SECRET_BODY);
+      await request(app()).get('/api/trends/history').set('Authorization', `Bearer ${token}`);
+      expect(spies[1]).toHaveBeenCalledWith('[history] upstream error status=503');
+      spies[1].mockClear();
+      const closed = await closedPortUrl();
+      await request(createApp({ ingestionUrl: closed, timeoutMs: 2000 }))
+        .get('/api/trends/history')
+        .set('Authorization', `Bearer ${token}`);
+      expect(spies[1]).toHaveBeenCalledWith('[history] upstream error');
     });
   });
 });

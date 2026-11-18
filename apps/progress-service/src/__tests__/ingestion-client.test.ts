@@ -30,9 +30,9 @@ describe('fetchUploadList', () => {
     fake.respond(401, '{}');
     await expect(call(fake.url)).resolves.toEqual({ ok: false, kind: 'unauthenticated' });
     fake.respond(500, '{}');
-    await expect(call(fake.url)).resolves.toEqual({ ok: false, kind: 'upstream' });
+    await expect(call(fake.url)).resolves.toEqual({ ok: false, kind: 'upstream', status: 500 });
     fake.respond(403, '{}');
-    await expect(call(fake.url)).resolves.toEqual({ ok: false, kind: 'upstream' });
+    await expect(call(fake.url)).resolves.toEqual({ ok: false, kind: 'upstream', status: 403 });
     fake.respond(200, 'no json');
     await expect(call(fake.url)).resolves.toEqual({ ok: false, kind: 'bad-response' });
   });
