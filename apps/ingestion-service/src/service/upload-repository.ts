@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import crypto from 'crypto';
-import { CategoryCritique, UploadDetail } from '@proyecto/shared-types';
+import { CategoryCritique, UploadDetail, UploadListItem } from '@proyecto/shared-types';
 import { CritiqueOutcome } from './critique-outcome';
 
 /**
@@ -40,6 +40,17 @@ export interface UploadDetailRecord {
   categories: CategoryCritique[];
 }
 
+/** Resumen de un upload para el listado (u5-T01). Solo uploads con crítica persistida. */
+export interface UploadListRecord {
+  uploadId: string;
+  /** ISO-8601 UTC con sufijo Z. */
+  timestamp: string;
+  status: UploadListItem['status'];
+  confidence: UploadListItem['confidence'];
+  fallbackReason: UploadListItem['fallbackReason'] | null;
+  scores: { categoryId: CategoryCritique['categoryId']; score: number }[];
+}
+
 export interface UploadRepository {
   create(params: {
     userId: string;
@@ -58,6 +69,8 @@ export interface UploadRepository {
   getDetailHeader(uploadId: string): Omit<UploadDetailRecord, 'categories'> | null;
   /** Categorías de un upload ordenadas por category_id ASC. Llamar solo tras comprobar el dueño. */
   getCategories(uploadId: string): CategoryCritique[];
+  /** Uploads del usuario con crítica persistida, más reciente primero (u5-T01). */
+  listByUser(userId: string): UploadListRecord[];
 }
 
 /**
@@ -96,6 +109,44 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
   const categoriesStmt = db.prepare<[string]>(
     'SELECT category_id, category_name, score, feedback FROM category_critiques WHERE upload_id = ? ORDER BY category_id ASC'
   );
+
+  // u5-T01: listado sin N+1. Consulta 1: cabeceras del usuario con crítica persistida.
+  // Consulta 2: scores de todos esos uploads (JOIN con uploads filtrado por user_id).
+  const listHeadersStmt = db.prepare<[string]>(
+    'SELECT upload_id, timestamp, status, confidence, fallback_reason FROM uploads WHERE user_id = ? AND status IS NOT NULL ORDER BY timestamp DESC, rowid DESC'
+  );
+  const listScoresStmt = db.prepare<[string]>(
+    'SELECT c.upload_id, c.category_id, c.score FROM category_critiques c JOIN uploads u ON u.upload_id = c.upload_id WHERE u.user_id = ? AND u.status IS NOT NULL ORDER BY c.upload_id, c.category_id ASC'
+  );
+  // Una sola transacción: ambas lecturas ven el mismo estado consistente.
+  const listTx = db.transaction((userId: string): UploadListRecord[] => {
+    const headers = listHeadersStmt.all(userId) as {
+      upload_id: string;
+      timestamp: string;
+      status: UploadListRecord['status'];
+      confidence: UploadListRecord['confidence'];
+      fallback_reason: UploadListRecord['fallbackReason'];
+    }[];
+    const scoreRows = listScoresStmt.all(userId) as {
+      upload_id: string;
+      category_id: UploadListRecord['scores'][number]['categoryId'];
+      score: number;
+    }[];
+    const byUpload = new Map<string, UploadListRecord['scores']>();
+    for (const r of scoreRows) {
+      const arr = byUpload.get(r.upload_id) ?? [];
+      arr.push({ categoryId: r.category_id, score: r.score });
+      byUpload.set(r.upload_id, arr);
+    }
+    return headers.map((h) => ({
+      uploadId: h.upload_id,
+      timestamp: toIsoUtc(h.timestamp),
+      status: h.status,
+      confidence: h.confidence,
+      fallbackReason: h.fallback_reason,
+      scores: byUpload.get(h.upload_id) ?? [],
+    }));
+  });
 
   const saveTx = db.transaction((uploadId: string, outcome: CritiqueOutcome) => {
     if (outcome.kind === 'fallback') {
@@ -196,6 +247,10 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
         score: c.score,
         feedback: c.feedback,
       }));
+    },
+
+    listByUser(userId: string): UploadListRecord[] {
+      return listTx(userId);
     },
 
     getDetail(uploadId: string): UploadDetailRecord | null {

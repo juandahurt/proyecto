@@ -88,3 +88,31 @@ export const UploadDetailSchema = z.object({
 
 /** Tipo TypeScript derivado. Nunca definir manualmente. */
 export type UploadDetail = z.infer<typeof UploadDetailSchema>;
+
+// =============================================================================
+// C5 — Upload List (u5-T01)
+// Body 200 de GET /api/uploads: resumen por upload para historial y tendencias.
+// Todo se deriva de los schemas anteriores; sin feedback, nombre, miniatura ni datos internos.
+// =============================================================================
+
+export const UploadListItemSchema = z.object({
+  uploadId: UploadResultSchema.shape.data.shape.uploadId,
+  status: UploadResultSchema.shape.data.shape.status,
+  confidence: UploadResultSchema.shape.data.shape.confidence,
+  /** Instante del upload en ISO-8601 con zona (UTC, sufijo Z). */
+  timestamp: z.string().datetime(),
+  /** 5 scores en ready (orden por categoryId); vacío en low_confidence. */
+  scores: z.array(CategoryCritiqueSchema.pick({ categoryId: true, score: true })),
+  fallbackReason: UploadResultSchema.shape.data.shape.fallbackReason,
+});
+
+export type UploadListItem = z.infer<typeof UploadListItemSchema>;
+
+export const UploadListSchema = z.object({
+  data: z.object({ items: z.array(UploadListItemSchema) }),
+  error: z.null(),
+  status: z.literal(200),
+});
+
+/** Tipo TypeScript derivado. Nunca definir manualmente. */
+export type UploadList = z.infer<typeof UploadListSchema>;

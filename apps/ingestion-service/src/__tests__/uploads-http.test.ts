@@ -8,6 +8,7 @@ import {
   ClaudeVisionResponse,
   UploadResultSchema,
   UploadDetailSchema,
+  UploadListSchema,
 } from '@proyecto/shared-types';
 import { AnthropicIntegrationError } from '../service/anthropic-error';
 import { createDatabase } from '../service/database';
@@ -659,5 +660,181 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     expect(res.body.data.confidence).toBe('LOW');
     expect(res.body.data.fallbackReason).toBe('low_confidence_flag');
     expect(res.body).not.toHaveProperty('data.categories');
+  });
+});
+
+describe('u5: GET /api/uploads (listado del usuario)', () => {
+  let db: ReturnType<typeof createDatabase>;
+  let repo: ReturnType<typeof createUploadRepository>;
+  let app: ReturnType<typeof createApp>;
+  let tmpBlobDir: string;
+  const originalJwtSecret = process.env.JWT_SECRET;
+  const originalBlobDir = process.env.BLOB_DIR;
+  const USER_A = 'user-a-u5';
+  const USER_B = 'user-b-u5';
+  const USER_C = 'user-c-u5';
+  const FORBIDDEN_KEYS = [
+    'userId',
+    'user_id',
+    'storedFilename',
+    'stored_filename',
+    'mimeType',
+    'sizeBytes',
+    'feedback',
+    'categoryName',
+    'thumbnailUrl',
+    'sig=',
+  ];
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = TEST_SIGNING_SECRET;
+    tmpBlobDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-u5-test-'));
+    process.env.BLOB_DIR = tmpBlobDir;
+  });
+
+  afterAll(() => {
+    if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalJwtSecret;
+    if (originalBlobDir === undefined) delete process.env.BLOB_DIR;
+    else process.env.BLOB_DIR = originalBlobDir;
+    fs.rmSync(tmpBlobDir, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    db = createDatabase(':memory:');
+    repo = createUploadRepository(db);
+    app = createApp({ db, repo, claudeClient: claudeClientStub, signingKey: TEST_SIGNING_KEY });
+    claudeClientStub.mockReset();
+    claudeClientStub.mockResolvedValue(STUB_CLAUDE_RESPONSE);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    db.close();
+  });
+
+  const post = (userId: string) =>
+    request(app)
+      .post('/api/uploads')
+      .set('Authorization', `Bearer ${makeJwt(userId)}`)
+      .attach('file', minimalJpegBuffer(30), { filename: 't.jpg', contentType: 'image/jpeg' });
+
+  const list = (userId?: string, query = '') => {
+    const r = request(app).get(`/api/uploads${query}`);
+    return userId ? r.set('Authorization', `Bearer ${makeJwt(userId)}`) : r;
+  };
+
+  /** Fija timestamps distintos para que el orden esperado no dependa del reloj. */
+  const setTs = (uploadId: string, ts: string) =>
+    db.prepare('UPDATE uploads SET timestamp = ? WHERE upload_id = ?').run(ts, uploadId);
+
+  it('GET /api/uploads: listado de A con dos uploads (ready y fallback), más reciente primero, pasa UploadListSchema', async () => {
+    const first = await post(USER_A);
+    claudeClientStub.mockRejectedValueOnce(new AnthropicIntegrationError('timeout', 'slow'));
+    const second = await post(USER_A);
+    const idFirst = first.body.data.uploadId;
+    const idSecond = second.body.data.uploadId;
+    setTs(idFirst, '2026-05-01 10:00:00');
+    setTs(idSecond, '2026-05-02 10:00:00');
+    await post(USER_B);
+
+    const res = await list(USER_A);
+    expect(res.status).toBe(200);
+    expect(UploadListSchema.safeParse(res.body).success).toBe(true);
+    const items = res.body.data.items;
+    expect(items).toHaveLength(2);
+    expect(items.map((i: { uploadId: string }) => i.uploadId)).toEqual([idSecond, idFirst]);
+    expect(items[0]).toMatchObject({
+      status: 'low_confidence',
+      scores: [],
+      fallbackReason: 'timeout',
+    });
+    expect(items[1].status).toBe('ready');
+    expect(items[1].scores).toHaveLength(5);
+    expect(items[1]).not.toHaveProperty('fallbackReason');
+  });
+
+  it('GET /api/uploads: B ve solo lo suyo y el listado vacío da 200 con items []', async () => {
+    await post(USER_A);
+    const b = await post(USER_B);
+    const resB = await list(USER_B);
+    expect(resB.body.data.items.map((i: { uploadId: string }) => i.uploadId)).toEqual([
+      b.body.data.uploadId,
+    ]);
+    const resC = await list(USER_C);
+    expect(resC.status).toBe(200);
+    expect(resC.body).toEqual({ data: { items: [] }, error: null, status: 200 });
+    expect(UploadListSchema.safeParse(resC.body).success).toBe(true);
+  });
+
+  it('GET /api/uploads: no se confunde con el detalle (no responde 404 Not Found)', async () => {
+    const res = await list(USER_C);
+    expect(res.status).not.toBe(404);
+    expect(res.body.error).toBeNull();
+  });
+
+  it('aislamiento: B no ve nada de A con ?userId, ?user_id ni ?uploadId de A, y el repo recibe el userId del token', async () => {
+    const a1 = await post(USER_A);
+    await post(USER_A);
+    const b = await post(USER_B);
+    const idA = a1.body.data.uploadId;
+    const spy = jest.spyOn(repo, 'listByUser');
+    for (const q of [`?userId=${USER_A}`, `?user_id=${USER_A}`, `?uploadId=${idA}`]) {
+      spy.mockClear();
+      const res = await list(USER_B, q);
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.map((i: { uploadId: string }) => i.uploadId)).toEqual([
+        b.body.data.uploadId,
+      ]);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(USER_B);
+    }
+  });
+
+  it('no expone ni filtra campos prohibidos ni el userId de otro usuario', async () => {
+    await post(USER_A);
+    await post(USER_B);
+    const body = JSON.stringify((await list(USER_B)).body);
+    for (const k of FORBIDDEN_KEYS) expect(body).not.toContain(k);
+    expect(body).not.toContain(USER_A);
+    expect(body).not.toContain(USER_B);
+  });
+
+  it('401: sin JWT, con JWT mal firmado y con JWT expirado', async () => {
+    const noAuth = await list();
+    expect(noAuth.status).toBe(401);
+    expect(noAuth.body).toEqual({ data: null, error: 'unauthenticated', status: 401 });
+    const bad = jwt.sign({ sub: USER_A }, 'otro-secret-distinto', { algorithm: 'HS256' });
+    const resBad = await request(app).get('/api/uploads').set('Authorization', `Bearer ${bad}`);
+    expect(resBad.status).toBe(401);
+    const expired = jwt.sign({ sub: USER_A }, TEST_SIGNING_SECRET, {
+      algorithm: 'HS256',
+      expiresIn: -10,
+    });
+    const resExp = await request(app).get('/api/uploads').set('Authorization', `Bearer ${expired}`);
+    expect(resExp.status).toBe(401);
+  });
+
+  it('500: fallo del repo responde Failed to list uploads y el log no contiene userId ni datos', async () => {
+    jest.spyOn(repo, 'listByUser').mockImplementation(() => {
+      throw new Error(`boom ${USER_A} secreto-interno`);
+    });
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const res = await list(USER_A);
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ data: null, error: 'Failed to list uploads', status: 500 });
+    expect(errSpy).toHaveBeenCalledTimes(1);
+    expect(errSpy).toHaveBeenCalledWith('[uploads] failed to list');
+    expect(JSON.stringify(errSpy.mock.calls)).not.toContain(USER_A);
+    expect(JSON.stringify(errSpy.mock.calls)).not.toContain('secreto-interno');
+  });
+
+  it('GET /:uploadId sigue respondiendo el detalle tras añadir el listado', async () => {
+    const a = await post(USER_A);
+    const res = await request(app)
+      .get(`/api/uploads/${a.body.data.uploadId}`)
+      .set('Authorization', `Bearer ${makeJwt(USER_A)}`);
+    expect(res.status).toBe(200);
+    expect(UploadDetailSchema.safeParse(res.body).success).toBe(true);
   });
 });
