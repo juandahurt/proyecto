@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ingestion-service
-          image: ingestion-service:u4-T01
+          image: ingestion-service:u4-T02
           imagePullPolicy: Never
           ports:
             - name: http
@@ -39,6 +39,11 @@ spec:
                   name: anthropic-key
                   key: api-key
                   optional: true
+            - name: THUMBNAIL_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: thumbnail-signing-key
+                  key: signing-key
           readinessProbe:
             httpGet:
               path: /health
