@@ -277,11 +277,12 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
 
   ```bash
   git diff main...HEAD --name-only | xargs -r grep -EH "sk-ant-api[0-9]+|ANTHROPIC_API_KEY\s*=\s*['\"]?sk-|JWT_SECRET\s*=\s*['\"]?[A-Za-z0-9+/=_-]{16,}" 2>/dev/null | grep -v "process\.env\." | grep -v "secretKeyRef" | grep -v "name: anthropic-key" || true
-  git ls-files | xargs grep -EH "sk-ant-api[0-9]+|ANTHROPIC_API_KEY\s*=\s*['\"]?sk-|JWT_SECRET\s*=\s*['\"]?[A-Za-z0-9+/=_-]{16,}" 2>/dev/null | grep -v "process\.env\." | grep -v "secretKeyRef" | grep -v "name: anthropic-key" || echo "no secrets in diff or tree"
+  git ls-files | grep -vE "^(bitacoras|revisiones)/" | xargs grep -EH "sk-ant-api[0-9]+|ANTHROPIC_API_KEY\s*=\s*['\"]?sk-|JWT_SECRET\s*=\s*['\"]?[A-Za-z0-9+/=_-]{16,}" 2>/dev/null | grep -v "process\.env\." | grep -v "secretKeyRef" | grep -v "name: anthropic-key" || echo "no secrets in diff or tree"
   git diff main...HEAD -- apps k8s packages | grep -E "^\+" | grep -nE "THUMBNAIL_SIGNING_KEY\s*[:=]\s*['\"]?[A-Za-z0-9+/=_-]{16,}" || echo "no signing key literal"
   ```
 
   Esperado: imprime `no secrets in diff or tree` y `no signing key literal`.
+  **Fix de especificación (ronda 1):** el barrido de árbol excluye `bitacoras/` y `revisiones/`, porque los informes de u4-T01 citan un literal falso con forma de clave (C-29). El barrido del **diff** (primera línea) **no** excluye nada: ahí sí cuenta cualquier literal.
 
 - [ ] **CA-17** — Scope respetado (`main...HEAD`, tres puntos).
 
