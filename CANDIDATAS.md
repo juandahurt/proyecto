@@ -126,12 +126,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** añadir una nota al `apps/ingestion-service/README.md` (cuando exista) explicando la convención. O un comentario en `upload-repository.ts` que documente la relación. O una decisión de arquitectura de usar el MISMO UUID para ambos (simplificación — pero pierde granularidad de rotación del blob storage). Trivial pero importante para las tareas que siguen.
 
-### C-23 — Razón de fallback propia para errores de red/5xx (`api_error`)
-
-**Origen:** Decisión D-1 de `tareas/u3-T01-low-confidence.md` y nota del codificador en `bitacoras/u3-T01.md`. Hoy `fallbackReason: "timeout"` cubre también red y 5xx porque el enum C1 solo tiene tres valores; es semánticamente amplio para el frontend y para diagnóstico.
-
-**Qué sería:** añadir `api_error` al enum de `fallbackReason` en `packages/shared-types/src/uploads.ts` y en C1 (cambio aditivo, no rompe consumidores), y mapear `network` a ese valor en `critique-outcome.ts`. Toca shared-types, por eso es tarea aparte. Decisión del humano.
-
 ### C-24 — `kubectl port-forward` huérfano a trust-service
 
 **Origen:** Revisor de u3-T01 ronda 1. Hay un `kubectl port-forward svc/trust-service 3300:3300` (PID 4456) abierto desde el 2026-11-16 18:57, de una ola anterior. Misma clase de higiene que C-05.
@@ -234,6 +228,8 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** PVC por servicio (como `ingestion-blobs`) con `strategy: Recreate`, o aceptar explícitamente la pérdida. Decisión del humano.
 
+**Decisión del humano (ola 9, 2026-11-18):** PVC por servicio (identity y trust). Pendiente de redactar como tarea (toca el cluster: permisos tarea por tarea).
+
 ### C-44 — Sin tope al tamaño de la respuesta de ingestion en ProgressService
 
 **Origen:** Sonda P8 de `revisiones/u5-T02/ronda-1.md`: se aceptaron 20 MB en 70 ms. Enlaza con C-40 (paginación).
@@ -327,3 +323,7 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 ### C-29 — El patrón de secretos de CA-17 marca cualquier mención de `sk-ant-api<n>` en bitácoras
 
 **Cerrada por u3-T02 (PR #16, `2fc5fe1`):** `tareas/_plantilla.md` lleva el CA estándar «Sin secretos»: el barrido del diff no excluye nada y el del árbol excluye `bitacoras/` y `revisiones/`.
+
+### C-23 — Razón de fallback propia para errores de red/5xx (`api_error`)
+
+**Descartada por el humano (ola 9, 2026-11-18):** `fallbackReason: "timeout"` sigue cubriendo red y 5xx. No se toca `shared-types` por esto.
