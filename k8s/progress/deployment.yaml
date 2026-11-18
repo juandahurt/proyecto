@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: progress-service
+  labels:
+    app: progress-service
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: progress-service
+  template:
+    metadata:
+      labels:
+        app: progress-service
+    spec:
+      containers:
+        - name: progress-service
+          image: progress-service:u5-T02
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3400
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: progress-service-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3400
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '100m'
+            limits:
+              memory: '256Mi'
+              cpu: '500m'
