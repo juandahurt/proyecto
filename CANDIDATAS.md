@@ -288,6 +288,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** `prettier --write` sobre esos 5 archivos (solo documentación) o excluirlos en `.prettierignore`. Mientras tanto los CA de prettier se miden sobre `git diff main...HEAD --name-only`. Plantilla: el CA de CA-4 con `--coverage=false` al filtrar un archivo.
 
+### C-52 — npm 11 en el host no ejecuta install scripts sin `allowScripts`
+
+**Origen:** `revisiones/u8-T03/ronda-1.md`. Un `npm ci` limpio con npm 11.20 deja `better-sqlite3` sin compilar y bcrypt no corre su script de instalación (carga por los prebuilds); hizo falta `npm rebuild better-sqlite3 bcrypt` para correr los tests. El Dockerfile usa npm 10 y no le afecta.
+
+**Qué sería:** documentarlo en el README o declarar `allowScripts`, en una tarea aparte.
+
+### C-53 — La plantilla de CA de imagen debe limpiar también la imagen de la etapa `builder` sin etiqueta
+
+**Origen:** F-02 de `revisiones/u8-T03/ronda-1.md`. `docker rmi <tag>` no borra la imagen final sin etiqueta de la etapa `builder`; queda `99df974139d0` (14:57:28, capa final `npm run build -w apps/identity-service`), casi seguro residuo del codificador de u8-T03. La borra el humano o se autoriza expresamente; el revisor no la tocó.
+
+**Qué sería:** que el CA de build desechable borre por ID tomado del log del build, o construya con `--target`.
+
 ---
 
 ## Cerradas
