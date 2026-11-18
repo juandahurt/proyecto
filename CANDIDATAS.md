@@ -294,6 +294,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** en los CA de despliegue, una lectura con contenido positivo: forzar una ruta que sí escriba en el log y afirmar que no incluye el token, o contar las líneas de log por petición. Actualizar la plantilla.
 
+### C-55 — u13/C9: con u6 sin persistencia no existe `TrendSnapshot` que borrar
+
+**Origen:** decisión de diseño de `tareas/u6-T01-trend-calculation.md`. El motor calcula al leer y no guarda nada; el endpoint C9 (TrustService → ProgressService, borrar `TrendSnapshot`) y FR-13.3 («todos los cálculos de tendencia») quedan satisfechos sin acción en ProgressService.
+
+**Qué sería:** al redactar u13, decidir si C9 desaparece del flujo de borrado (TrustService solo borra en ingestion e identity) o se conserva como no-op. Si u7 introdujera caché o snapshot, esto se reabre.
+
 ---
 
 ## Cerradas
