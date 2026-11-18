@@ -45,16 +45,28 @@ Rutas, no contenido pegado:
 Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno.
 
 - [ ] **CA-1** — <qué debe ser cierto>
+
   ```bash
   <comando exacto>
   ```
+
   Esperado: <qué salida demuestra que pasa>
 
 - [ ] **CA-2** — <qué debe ser cierto>
+
   ```bash
   <comando exacto>
   ```
+
   Esperado: <qué salida demuestra que pasa>
+
+- [ ] **CA-N** — Sin secretos en el diff ni en el árbol (CA estándar; inclúyelo en toda tarea).
+  ```bash
+  git diff main...HEAD --name-only | xargs -r grep -EH "sk-ant-api[0-9]+|ANTHROPIC_API_KEY\s*=\s*['\"]?sk-|JWT_SECRET\s*=\s*['\"]?[A-Za-z0-9+/=_-]{16,}" 2>/dev/null | grep -v "process\.env\." | grep -v "secretKeyRef" | grep -v "name: anthropic-key" || echo "no secrets in diff"
+  git ls-files | grep -vE "^(bitacoras|revisiones)/" | xargs grep -EH "sk-ant-api[0-9]+|ANTHROPIC_API_KEY\s*=\s*['\"]?sk-|JWT_SECRET\s*=\s*['\"]?[A-Za-z0-9+/=_-]{16,}" 2>/dev/null | grep -v "process\.env\." | grep -v "secretKeyRef" | grep -v "name: anthropic-key" || echo "no secrets in diff or tree"
+  ```
+  Esperado: imprime `no secrets in diff` y `no secrets in diff or tree`.
+  Nota: el barrido del **diff** no excluye nada; el del **árbol** excluye `bitacoras/` y `revisiones/`. No cites literales con forma de clave en bitácoras, tests ni comentarios; descríbelos en palabras (C-29).
 
 > **Si un criterio no tiene comando, la tarea no está lista y no se despacha.** «Funciona
 > correctamente» no es un criterio: es una opinión con forma de criterio.
