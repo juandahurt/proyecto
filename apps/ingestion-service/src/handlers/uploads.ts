@@ -1,7 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
-import { ClaudeVisionResponse, UploadResult, UploadDetail } from '@proyecto/shared-types';
+import {
+  ClaudeVisionResponse,
+  UploadResult,
+  UploadDetail,
+  UploadList,
+} from '@proyecto/shared-types';
 import { detectImageKind, kindToExtension, kindToMimeType } from '../service/magic-number';
 import { writeBlob } from '../service/blob-store';
 import { signThumbnailUrl } from '../service/thumbnail-url';
@@ -222,6 +227,32 @@ export function createUploadsRouter({
       res.status(202).json(body);
     }
   );
+
+  /**
+   * GET /api/uploads — listado del usuario autenticado, más reciente primero (US-5, AC-4.1).
+   * El userId sale SOLO del token verificado; cualquier parámetro de la query se ignora.
+   */
+  router.get('/', (req: Request, res: Response) => {
+    try {
+      const items = repo.listByUser(req.user!.userId).map((r) => {
+        const item: UploadList['data']['items'][number] = {
+          uploadId: r.uploadId,
+          status: r.status,
+          confidence: r.confidence,
+          timestamp: r.timestamp,
+          scores: r.scores,
+        };
+        if (r.fallbackReason) item.fallbackReason = r.fallbackReason;
+        return item;
+      });
+      const body = { data: { items }, error: null, status: 200 } satisfies UploadList;
+      res.status(200).json(body);
+    } catch {
+      // Sin userId ni datos en el log: el error puede arrastrarlos.
+      console.error('[uploads] failed to list');
+      res.status(500).json({ data: null, error: 'Failed to list uploads', status: 500 });
+    }
+  });
 
   /**
    * GET /api/uploads/:uploadId — detalle de una crítica persistida (US-4, AC-4.1).
