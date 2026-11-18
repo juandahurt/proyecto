@@ -75,6 +75,17 @@ describe('callClaudeVision (rama real, SDK simulado)', () => {
     expect(r.categories).toHaveLength(5);
   });
 
+  it('construye el cliente con maxRetries 0 (sin reintentos, C10 No retry) y la apiKey de prueba', async () => {
+    const Ctor = Anthropic as unknown as jest.Mock;
+    Ctor.mockClear();
+    mockCreate.mockResolvedValue(textResp(validJson()));
+    await callClaudeVision(buf);
+    expect(Ctor).toHaveBeenCalledTimes(1);
+    const opts = Ctor.mock.calls[Ctor.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(opts.maxRetries).toBe(0);
+    expect(opts.apiKey).toBe('test-key-not-real');
+  });
+
   it('kind timeout — APIConnectionTimeoutError', async () => {
     mockCreate.mockRejectedValue(new Anthropic.APIConnectionTimeoutError());
     expect(await kindOf(callClaudeVision(buf))).toBe('timeout');
