@@ -64,7 +64,7 @@ export function createDatabase(dbPath?: string): Database.Database {
     db.exec('ALTER TABLE uploads ADD COLUMN fallback_reason TEXT');
   }
 
-  // Migración idempotente (u5-T03): el DEFAULT CURRENT_TIMESTAMP de las BDs existentes no
+  // Migración idempotente (u5-T03): el valor por defecto de la columna en las BDs existentes no
   // puede cambiarse y guarda segundos con espacio. Se reescriben las filas viejas al formato
   // nuevo (ms, 'T', 'Z') para que el texto ordene igual que el tiempo. El WHERE hace que las
   // filas ya migradas no se toquen. Solo la columna timestamp.
