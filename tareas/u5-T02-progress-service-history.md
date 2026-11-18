@@ -120,13 +120,21 @@ Cada uno con su comando. El revisor los corre desde la raíz del worktree con `t
 
   Esperado: tests en verde; `/health` sigue público y `GET /api/trends/history` es la única ruta de datos.
 
-- [ ] **CA-5** — Mapeo de errores aguas arriba, con cuerpo **exacto** y sin filtrar detalles: ingestion responde 401 → **401**; 500/503 → **502 `Upstream unavailable`**; 403/404 inesperados → **502**; conexión rechazada (puerto cerrado) → **502**; lento más que el timeout → **504 `Upstream timeout`**; cuerpo no JSON, JSON con campo faltante, `status` distinto de 200 o item con campo de más/menos requerido → **502 `Bad upstream response`**.
+- [ ] **CA-5** — Mapeo de errores aguas arriba, con cuerpo **exacto** y sin filtrar detalles: ingestion responde 401 → **401**; 500/503 → **502 `Upstream unavailable`**; 403/404 inesperados → **502**; conexión rechazada (puerto cerrado) → **502**; lento más que el timeout → **504 `Upstream timeout`**; cuerpo no JSON, JSON con campo requerido faltante o de tipo/enum inválido, o `status` distinto de 200 → **502 `Bad upstream response`**; una **redirección** (301/302/307) de ingestion, a otro host o al mismo origen → **502 `Upstream unavailable`** y **ninguna petición llega al destino de la redirección**.
 
   ```bash
   npm test -w apps/progress-service -- --testPathPattern="(history|ingestion-client)" --no-coverage --verbose 2>&1 | grep -E "(502|504|Upstream|Bad upstream|timeout|rechazad|no JSON|campo)"
   ```
 
   Esperado: tests en verde, cada uno afirmando **código y body completo**, y que el body de error **no contiene** el cuerpo de ingestion, su URL, ni el JWT. El timeout se prueba con `deps.timeoutMs` pequeño (p. ej. 50 ms) contra un servidor que tarda más, **sin `sleep` largos** (la suite completa < 15 s).
+
+  **Fix de especificación (ronda 1, arbitrado por el orquestador).** Mi redacción original pedía a la vez «`UploadListSchema` no se redefine» y «502 por campo de más»: se contradicen. Se decide: **un campo de más (en un item o en el envoltorio) se DESCARTA sin error** (lo hace el schema; es lo más seguro porque no deja pasar campos internos): el handler responde **200** y el body **no contiene** el campo. El caso «campo de más» pasa de «502» a «200 sin el campo» y debe tener su test (parte de una respuesta válida y añade `userId` de ingestion en un item y otro campo en el envoltorio). Se **mantiene** el 502 para campo requerido faltante o de tipo/enum inválido. Además, por los hallazgos de la ronda 1:
+  - **Redirecciones (F-02):** el cliente llama a `fetch` con `redirect: 'error'` (o `'manual'`) y trata el resultado como `upstream` (502). Test con un 302 a otro host y a otro path del mismo origen, afirmando 502 **y 0 peticiones al destino**. La única salida de red del servicio es hacia `INGESTION_URL` (AC-4.2).
+  - **Logs (F-03):** el espía de `console` se aplica a **todos** los casos de CA-5 **y también al camino 200**; ninguna llamada contiene el JWT, el `userId`, un `uploadId` ni el cuerpo de ingestion. Criterio de mutación: añadir un `console.log` con `userId` o con los items en el camino 200 debe **hacer fallar** el test.
+  - **Timeout por entorno (F-04):** `INGESTION_TIMEOUT_MS` se prueba por su **efecto**: con la variable en `50` y un ingestion falso lento → **504**; el test restaura la variable en `afterEach` aunque falle. Criterio de mutación: si se ignora la variable y se usa siempre el valor por defecto, ese test debe **fallar**.
+  - **Marca de log (F-05):** `[history] upstream error status=<n>` cuando ingestion respondió un status; `[history] upstream error` solo si no hubo respuesta (red). El cliente propaga el status en su resultado.
+  - **`isTimeout` (F-07):** se restringe a `TimeoutError` (la única señal que existe es `AbortSignal.timeout`) o se documenta en un comentario por qué `AbortError` también cuenta.
+  - **Dockerfile (F-06):** se **quita** `python3 make g++` de la etapa builder **solo si** el `docker build` y el smoke de CA-13 siguen pasando (el lockfile lista workspaces con SQLite; si `npm ci` lo exige, se deja y se **registra por qué** en la bitácora con «atención»). El usuario no-root y `--omit=dev` quedan **fuera** (C-45: afecta a todos los servicios).
 
 - [ ] **CA-6** — **Los errores no escapan como excepciones ni cuelgan al cliente**, y los logs no filtran datos: un espía sobre `console.log/warn/error` afirma que, en todos los casos de CA-5, **ninguna** llamada contiene el JWT, el `userId` del token, un `uploadId` ni el cuerpo de ingestion.
 

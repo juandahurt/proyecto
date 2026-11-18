@@ -234,6 +234,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** dos aserciones adicionales. Sin cambio de código de producción.
 
+### C-43 — identity y trust guardan su SQLite en un `emptyDir`
+
+**Origen:** Hallazgo del orquestador al verificar el cluster (ola 7). `k8s/identity/deployment.yaml` y `k8s/trust/deployment.yaml` montan `data-volume` como `emptyDir: {}`: cualquier reinicio del pod borra usuarios, suscripciones y onboarding, mientras que los uploads de ingestion (PVC) conservan `user_id` huérfanos.
+
+**Qué sería:** PVC por servicio (como `ingestion-blobs`) con `strategy: Recreate`, o aceptar explícitamente la pérdida. Decisión del humano.
+
+### C-44 — Sin tope al tamaño de la respuesta de ingestion en ProgressService
+
+**Origen:** Sonda P8 de `revisiones/u5-T02/ronda-1.md`: se aceptaron 20 MB en 70 ms. Enlaza con C-40 (paginación).
+
+**Qué sería:** límite de bytes al leer el cuerpo y 502 si se supera; mejor junto con paginación en ingestion.
+
+### C-45 — Los Dockerfiles corren como root y llevan devDependencies en el runtime
+
+**Origen:** F-06 de `revisiones/u5-T02/ronda-1.md`. identity, ingestion y progress corren con `uid=0`; `node_modules` incluye jest, ts-jest, eslint, turbo y typescript (162 MB en progress).
+
+**Qué sería:** `USER node` y `npm ci --omit=dev` (o `npm prune --omit=dev`) en la etapa runtime, en los tres servicios, en una tarea de endurecimiento.
+
 ---
 
 ## Cerradas
