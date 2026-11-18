@@ -300,6 +300,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** que el CA de build desechable borre por ID tomado del log del build, o construya con `--target`.
 
+### C-54 — `grep -ci bearer` sobre logs no prueba que no se filtre el token
+
+**Origen:** `revisiones/u5-T03/ronda-2.md`. En un servicio que no registra las peticiones, el `grep` siempre da 0; no demuestra nada. Pasó en CA-11 de u5-T03 y en CA-14 de u5-T02.
+
+**Qué sería:** en los CA de despliegue, una lectura con contenido positivo: forzar una ruta que sí escriba en el log y afirmar que no incluye el token, o contar las líneas de log por petición. Actualizar la plantilla.
+
 ---
 
 ## Cerradas
