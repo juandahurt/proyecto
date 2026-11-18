@@ -28,4 +28,16 @@ describe('password helpers', () => {
     const result = await compare('wrongpassword', h);
     expect(result).toBe(false);
   });
+
+  // COMPAT (u8-T03): hash generado con bcrypt 5.1.1 (versión previa a la 6.x) con una
+  // contraseña falsa; garantiza que los usuarios ya registrados siguen pudiendo entrar.
+  const HASH_BCRYPT_5 = '$2b$10$iAegri6ypPHw/s1WC2hYEOIVhGcLhLcN/EHD6sQN.pFIEUl6VLGP2';
+
+  it('COMPAT — hash de bcrypt 5 se verifica con la versión actual', async () => {
+    expect(await compare('clave-solo-para-tests', HASH_BCRYPT_5)).toBe(true);
+  });
+
+  it('COMPAT — contraseña distinta contra hash de bcrypt 5 devuelve false', async () => {
+    expect(await compare('otra-clave-distinta', HASH_BCRYPT_5)).toBe(false);
+  });
 });
