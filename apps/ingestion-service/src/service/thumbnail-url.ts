@@ -4,7 +4,7 @@ import crypto from 'crypto';
 export const THUMBNAIL_TTL_SECONDS = 900;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SIG_RE = /^[0-9a-f]{64}$/i;
+const SIG_RE = /^[0-9a-f]{64}$/;
 const EXP_RE = /^[0-9]+$/;
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
@@ -43,7 +43,7 @@ export function verifyThumbnailSignature(args: {
     const expNum = Number(exp);
     if (!Number.isSafeInteger(expNum) || expNum <= 0) return false;
 
-    const given = Buffer.from(sig.toLowerCase(), 'hex');
+    const given = Buffer.from(sig, 'hex');
     const expected = Buffer.from(computeSignature(uploadId, exp, key), 'hex');
     // timingSafeEqual lanza si las longitudes difieren; ambas son 32 bytes tras SIG_RE
     if (given.length !== expected.length) return false;
