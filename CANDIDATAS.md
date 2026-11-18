@@ -126,12 +126,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** añadir una nota al `apps/ingestion-service/README.md` (cuando exista) explicando la convención. O un comentario en `upload-repository.ts` que documente la relación. O una decisión de arquitectura de usar el MISMO UUID para ambos (simplificación — pero pierde granularidad de rotación del blob storage). Trivial pero importante para las tareas que siguen.
 
-### C-22 — `new Anthropic({ apiKey })` sin `maxRetries: 0` contradice C10 «No retry»
-
-**Origen:** Candidata del revisor en `revisiones/u3-T01/ronda-1.md`. `apps/ingestion-service/src/service/claude-client.ts` (código de u2) no fija `maxRetries`; el SDK 0.39 reintenta 2 veces por defecto ante errores de conexión, 5xx y timeouts (`core.js:134`), y C10 `ErrorBehavior` dice «No retry». Con el timeout de 30 s, el peor caso de espera antes del fallback puede multiplicarse.
-
-**Qué sería:** pasar `maxRetries: 0` al constructor del cliente y un test que lo fije observando las opciones que recibe el mock del SDK. Una línea de código más su prueba.
-
 ### C-23 — Razón de fallback propia para errores de red/5xx (`api_error`)
 
 **Origen:** Decisión D-1 de `tareas/u3-T01-low-confidence.md` y nota del codificador en `bitacoras/u3-T01.md`. Hoy `fallbackReason: "timeout"` cubre también red y 5xx porque el enum C1 solo tiene tres valores; es semánticamente amplio para el frontend y para diagnóstico.
@@ -161,12 +155,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Origen:** Notas de `tareas/u4-T01-critique-storage.md` y bitácora de u4-T01. El nombre quedó engañoso tras mover la BD al mismo PVC.
 
 **Qué sería:** crear un PVC nuevo (p. ej. `ingestion-data`), migrar datos y borrar el viejo. Obliga a recrear el volumen; solo vale la pena si el nombre confunde de verdad.
-
-### C-29 — El patrón de secretos de CA-17 marca cualquier mención de `sk-ant-api<n>` en bitácoras
-
-**Origen:** Candidata del revisor en `revisiones/u4-T01/ronda-1.md` (F-02). El barrido `git ls-files | xargs grep …sk-ant-api[0-9]+…` incluye `bitacoras/` y `revisiones/`, así que una clave **falsa** citada en prosa (p. ej. al describir un test) hace fallar el criterio.
-
-**Qué sería:** excluir `bitacoras/` y `revisiones/` del barrido en las plantillas de tarea, o acotar el patrón a valores asignados. Mientras tanto, los codificadores no deben citar literales con forma de clave en las bitácoras.
 
 ### C-30 — `wal_checkpoint` de la BD SQLite sobre el PVC
 
@@ -239,3 +227,11 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 ### C-25 — Tipar con `satisfies UploadResult` el body `ready` de `handlers/uploads.ts`
 
 **Cerrada por u4-T01 (PR #14, `f42af66`):** el body `ready` se tipa con `satisfies UploadResult`, simétrico con el de fallback.
+
+### C-22 — `new Anthropic({ apiKey })` sin `maxRetries: 0` contradice C10 «No retry»
+
+**Cerrada por u3-T02 (PR #16, `2fc5fe1`):** el cliente se construye con `maxRetries: 0` y un test fija la opción observando el constructor simulado. El cluster aún corre una imagen anterior; llegará con el siguiente despliegue.
+
+### C-29 — El patrón de secretos de CA-17 marca cualquier mención de `sk-ant-api<n>` en bitácoras
+
+**Cerrada por u3-T02 (PR #16, `2fc5fe1`):** `tareas/_plantilla.md` lleva el CA estándar «Sin secretos»: el barrido del diff no excluye nada y el del árbol excluye `bitacoras/` y `revisiones/`.
