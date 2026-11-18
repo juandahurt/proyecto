@@ -254,9 +254,9 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 ### C-46 — `npm audit --audit-level=high` falla en main (`tar` critical, `@mapbox/node-pre-gyp` high)
 
-**Origen:** informes de ronda de u5-T02 (ronda 2) y u5-T03 (ronda 1). Cadena transitiva de `better-sqlite3` (identity y trust). Verificado por el orquestador sobre `main`: 8 vulnerabilidades (6 moderate, 1 high, 1 critical); `npm audit fix` las arregla.
+**Origen:** informes de ronda de u5-T02 (ronda 2) y u5-T03 (ronda 1). **Corrección del orquestador:** los informes decían que la cadena venía de `better-sqlite3`; es falso. La cadena real es `identity-service → bcrypt@5.1.1 → @mapbox/node-pre-gyp@1.0.11 → tar@6.2.1`. Verificado sobre `main`: 8 vulnerabilidades (6 moderate, 1 high, 1 critical).
 
-**Qué sería:** tarea propia (actualizar o forzar `tar` en el lockfile, sin tocar código). La regla de `project.md` bloquea todo merge mientras falle. **Decisión del humano:** va antes de los PRs de u5-T02 y u5-T03.
+**Qué sería:** tarea `u8-T03-bcrypt-audit-fix` (bcrypt 5 → 6, sin `node-pre-gyp` ni `tar`; sin desplegar). Las 6 moderate (`typescript-eslint`, `minimatch`) quedan fuera. La regla de `project.md` bloquea todo merge mientras falle. **Decisión del humano:** va antes de los PRs pendientes. El PR #18 (u5-T02) se fusionó con el audit en rojo, por decisión del humano.
 
 ### C-47 — La migración de u5-T03 asigna NULL a una fila no parseable y el pod entra en crashloop
 
