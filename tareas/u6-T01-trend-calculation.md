@@ -202,6 +202,15 @@ Qué pruebas se escriben **en esta tarea**, no después:
 
 ---
 
+## Fix de especificación (ronda 1, 2026-11-18)
+
+Errores del orquestador detectados por el codificador (ver `bitacoras/u6-T01.md`, ATENCIÓN-1 y ATENCIÓN-2):
+
+- **CA-1, segundo `grep`:** estaba mal escrito. Casaba con cualquier aparición del literal `insufficient_data` o `'stagnating'` fuera de `trends.ts`, no solo con enums duplicados. El comando correcto está anclado a `z.enum` y entrecomilla `--include` (en zsh sin comillas falla):
+  `grep -rnE "z\.enum\(\[[^]]*'(improving|stagnating|insufficient_data)'" apps packages --include='*.ts' --exclude-dir=node_modules --exclude-dir=dist | grep -v "packages/shared-types/src/trends.ts" | grep -v "__tests__" || echo "sin tipos duplicados"`
+  El mapa `TrendStatus` que el codificador exportó desde `trends.ts` no es obligatorio ni defecto: se acepta, pero ya no hace falta para que el criterio pase.
+- **CA-4, `uploadsNeeded`:** la fórmula es `max(0, mínimo − calificados)`, con el mínimo configurable (por defecto 4). El «1» del ejemplo es el caso de 3 calificados con mínimo 4.
+
 ## Notas
 
 - Archivos que se **modifican en su sitio**: `packages/shared-types/src/index.ts` (solo la reexportación). Nada de duplicados con sufijo. Bitácora nueva: `bitacoras/u6-T01.md` (hash de la tarea, nombre del pod de progress-service antes y después, salida roja inicial, las tres decisiones de diseño de arriba, y que C-40/C-44 siguen abiertas).
