@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { ClaudeVisionResponse, UploadResult, UploadDetail } from '@proyecto/shared-types';
 import { detectImageKind, kindToExtension, kindToMimeType } from '../service/magic-number';
 import { writeBlob } from '../service/blob-store';
+import { signThumbnailUrl } from '../service/thumbnail-url';
 import { UploadRepository } from '../service/upload-repository';
 import { resolveCritique, CritiqueOutcome } from '../service/critique-outcome';
 
@@ -25,6 +26,10 @@ export interface UploadsRouterDeps {
   repo: UploadRepository;
   /** Cliente Claude Vision inyectable. En tests se inyecta un stub. En producción, callClaudeVision. */
   claudeClient: (buf: Buffer) => Promise<ClaudeVisionResponse>;
+  /** Clave HMAC para firmar thumbnailUrl. */
+  signingKey: string;
+  /** Reloj en ms epoch. */
+  now: () => number;
 }
 
 /**
@@ -42,7 +47,12 @@ export interface UploadsRouterDeps {
  *   - Fallback (LOW, schema inválido, timeout/red): 202 con status "low_confidence", confidence "LOW",
  *     fallbackReason y SIN categories
  */
-export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): Router {
+export function createUploadsRouter({
+  repo,
+  claudeClient,
+  signingKey,
+  now,
+}: UploadsRouterDeps): Router {
   const router = Router();
 
   router.post(
@@ -244,6 +254,7 @@ export function createUploadsRouter({ repo, claudeClient }: UploadsRouterDeps): 
       status: detail.status,
       confidence: detail.confidence,
       timestamp: detail.timestamp,
+      thumbnailUrl: signThumbnailUrl({ uploadId: detail.uploadId, key: signingKey, nowMs: now() }),
     };
     if (detail.status === 'ready') data.categories = repo.getCategories(uploadId);
     else if (detail.fallbackReason) data.fallbackReason = detail.fallbackReason;

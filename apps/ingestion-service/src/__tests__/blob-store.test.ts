@@ -1,7 +1,7 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { writeBlob } from '../service/blob-store';
+import { writeBlob, readBlob } from '../service/blob-store';
 
 describe('writeBlob', () => {
   let tmpDir: string;
@@ -77,5 +77,53 @@ describe('writeBlob', () => {
         fs.unlinkSync(defaultFile);
       }
     }
+  });
+});
+
+describe('readBlob', () => {
+  let tmpDir: string;
+  let outsideDir: string;
+  const originalBlobDir = process.env.BLOB_DIR;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-readblob-test-'));
+    outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-readblob-outside-'));
+    process.env.BLOB_DIR = tmpDir;
+  });
+
+  afterEach(() => {
+    if (originalBlobDir === undefined) delete process.env.BLOB_DIR;
+    else process.env.BLOB_DIR = originalBlobDir;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  });
+
+  it('lee lo que escribió writeBlob (nombre simple OK)', async () => {
+    const content = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    await writeBlob('a-file.jpg', content);
+    const got = await readBlob('a-file.jpg');
+    expect(got.equals(content)).toBe(true);
+  });
+
+  it('archivo ausente → error con code ENOENT (distinguible)', async () => {
+    await expect(readBlob('missing.jpg')).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it.each([['../secret'], ['..'], ['a/b.jpg'], ['a\\b.jpg'], ['/etc/passwd'], ['..\\x'], ['']])(
+    'traversal: rechaza %p sin ENOENT',
+    async (name) => {
+      const err = await readBlob(name).then(
+        () => null,
+        (e: NodeJS.ErrnoException) => e
+      );
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.code).not.toBe('ENOENT');
+    }
+  );
+
+  it('ruta absoluta a un señuelo fuera de BLOB_DIR no se lee', async () => {
+    const decoy = path.join(outsideDir, 'decoy.txt');
+    fs.writeFileSync(decoy, 'DECOY-CONTENT');
+    await expect(readBlob(decoy)).rejects.toThrow();
   });
 });

@@ -15,6 +15,7 @@ import { createUploadRepository } from '../service/upload-repository';
 import { createApp } from '../server';
 
 const TEST_SIGNING_SECRET = 'a-test-secret-for-tests-only';
+const TEST_SIGNING_KEY = 'test-only-signing-key-0123456789abcdef';
 const TEST_USER_ID = 'user-test-abc-123';
 
 /** Crea un JWT firmado con el secret de test para simular usuario autenticado. */
@@ -100,7 +101,7 @@ describe('POST /api/uploads', () => {
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
     // Inyectar el stub de claudeClient para evitar llamadas a la red en tests
-    app = createApp({ db, repo, claudeClient: claudeClientStub });
+    app = createApp({ db, repo, claudeClient: claudeClientStub, signingKey: TEST_SIGNING_KEY });
   });
 
   afterAll(() => {
@@ -407,7 +408,7 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     process.env.BLOB_DIR = tmpBlobDir;
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
-    app = createApp({ db, repo, claudeClient: claudeClientStub });
+    app = createApp({ db, repo, claudeClient: claudeClientStub, signingKey: TEST_SIGNING_KEY });
   });
 
   afterAll(() => {
@@ -507,7 +508,12 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
         throw new Error('disk full SECRET-TOKEN');
       },
     };
-    const failApp = createApp({ db, repo: failingRepo, claudeClient: claudeClientStub });
+    const failApp = createApp({
+      db,
+      repo: failingRepo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+    });
     const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {
@@ -522,7 +528,7 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     }
   });
 
-  it('GET 200 del dueño (UploadDetail): categories iguales a las del POST, timestamp con Z, sin thumbnailUrl', async () => {
+  it('GET 200 del dueño (UploadDetail): categories iguales a las del POST, timestamp con Z, con thumbnailUrl firmada', async () => {
     const created = await post(USER_A);
     const res = await get(created.body.data.uploadId, USER_A);
     expect(res.status).toBe(200);
@@ -538,7 +544,11 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     expect(res.body.data.timestamp).toMatch(/Z$/);
     expect(res.body.data.status).toBe('ready');
     expect(res.body.data.confidence).toBe('HIGH');
-    expect(res.body.data).not.toHaveProperty('thumbnailUrl');
+    expect(res.body.data.thumbnailUrl).toMatch(
+      new RegExp(
+        `^/api/uploads/${created.body.data.uploadId}/thumbnail\\?exp=\\d+&sig=[0-9a-f]{64}$`
+      )
+    );
     expect(res.body.data).not.toHaveProperty('fallbackReason');
   });
 
@@ -579,7 +589,12 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
       });
     }) as never);
     const spyRepo = createUploadRepository(spyDb);
-    const spyApp = createApp({ db: spyDb, repo: spyRepo, claudeClient: claudeClientStub });
+    const spyApp = createApp({
+      db: spyDb,
+      repo: spyRepo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+    });
     try {
       const created = await post(USER_A, spyApp);
       const id = created.body.data.uploadId;

@@ -69,13 +69,18 @@ export type UploadResult = z.infer<typeof UploadResultSchema>;
 // =============================================================================
 // C1 — Upload Detail (u4-T01)
 // Body 200 de GET /api/uploads/:uploadId. Deriva de UploadResultSchema (sin copiar
-// campos) y añade el timestamp ISO-8601. La miniatura llega en u4-T02.
+// campos) y añade el timestamp ISO-8601 y la URL firmada de la miniatura (u4-T02).
 // =============================================================================
 
 export const UploadDetailSchema = z.object({
   data: UploadResultSchema.shape.data.extend({
     /** Instante del upload en ISO-8601 con zona (UTC, sufijo Z). */
     timestamp: z.string().datetime(),
+    /**
+     * Ruta relativa firmada (válida 15 minutos) que sirve la imagen: /api/uploads/<id>/thumbnail?exp=&sig=.
+     * Solo se emite al dueño (u4-T02).
+     */
+    thumbnailUrl: z.string().min(1).optional(),
   }),
   error: z.null(),
   status: z.literal(200),

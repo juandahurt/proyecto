@@ -6,7 +6,7 @@ import { createApp } from '../server';
 describe('GET /health', () => {
   const db = createDatabase(':memory:');
   const repo = createUploadRepository(db);
-  const app = createApp({ db, repo });
+  const app = createApp({ db, repo, signingKey: 'test-only-signing-key-0123456789abcdef' });
 
   afterAll(() => {
     db.close();
