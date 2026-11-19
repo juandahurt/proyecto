@@ -84,6 +84,7 @@ describe('Upload (2A): errores del servidor', () => {
       await screen.findByRole('group', { name: 'Drop zone for your drawing' });
       dropOn(zone(), [makeFile('image/jpeg', 100, SECRET_NAME)]);
       expect(await screen.findByRole('alert')).toHaveTextContent(text);
+      expectFileNameAbsent(SECRET_STEM);
       expect(currentPath()).toBe('/upload');
       expect(Object.keys(window.localStorage)).toEqual([TOKEN_KEY]);
       expect(screen.getByRole('group', { name: 'Drop zone for your drawing' })).toBeInTheDocument();
@@ -162,14 +163,18 @@ describe('Upload: el nombre del archivo del usuario no sale del File (todos los 
 });
 
 describe('Upload: segundo envío con la petición en vuelo', () => {
-  it('dos selecciones síncronas dentro de un solo act() sobre el input real producen un solo POST', async () => {
+  it('dos selecciones dentro de un solo act() (sin repintar entre ambas) sobre la zona real producen un solo POST', async () => {
     const pending = new Promise<ReturnType<typeof acceptedOk>>(() => undefined);
     const { f } = setupApp('/upload', { 'POST /api/uploads': () => pending as never });
     await screen.findByRole('group', { name: 'Drop zone for your drawing' });
-    const input = fileInput();
+    const target = zone();
     await act(async () => {
-      fireEvent.change(input, { target: { files: [makeFile('image/jpeg', 100, 'a.jpg')] } });
-      fireEvent.change(input, { target: { files: [makeFile('image/png', 100, 'b.png')] } });
+      dropOn(target, [makeFile('image/jpeg', 100, 'a.jpg')]);
+      // react-dropzone aborta una lectura anterior si llega otra sin esperar: se deja procesar la
+      // primera (onFile corre) antes de soltar la segunda, sin que React llegue a repintar.
+      await new Promise((r) => setTimeout(r, 20));
+      dropOn(target, [makeFile('image/png', 100, 'b.png')]);
+      await new Promise((r) => setTimeout(r, 20));
     });
     expect(countOf(f, 'POST /api/uploads')).toBe(1);
   });
