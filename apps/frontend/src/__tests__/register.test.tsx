@@ -125,3 +125,27 @@ describe('Register', () => {
     spy.restore();
   });
 });
+
+describe('Register: silencio de consola en cada rama de error', () => {
+  const cases: Array<[string, () => ReturnType<typeof jsonResponse>]> = [
+    ['409', () => jsonResponse(409, { data: null, error: 'dup', status: 409 })],
+    ['5xx', () => jsonResponse(500, { data: null, error: 'x', status: 500 })],
+    [
+      'red',
+      () => {
+        throw new TypeError('network');
+      },
+    ],
+  ];
+  it.each(cases)('registro %s no escribe nada en la consola', async (_name, respond) => {
+    const spy = spyConsole();
+    installFetch({ 'POST /api/auth/register': respond });
+    renderApp('/register');
+    const user = await fill(TEST_EMAIL, TEST_PASSWORD);
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await screen.findByRole('alert');
+    expect(spy.callCount()).toBe(0);
+    expect(spy.allArgs().join(' ')).not.toContain(TEST_PASSWORD);
+    spy.restore();
+  });
+});

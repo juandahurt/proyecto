@@ -104,3 +104,8 @@ export function spyConsole() {
 beforeEach(() => {
   window.localStorage.clear();
 });
+
+// Un espía que sobrevive a un test que falla contaminaría a los siguientes.
+afterEach(() => {
+  jest.restoreAllMocks();
+});

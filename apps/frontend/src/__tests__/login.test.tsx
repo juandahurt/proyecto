@@ -177,3 +177,27 @@ describe('Login', () => {
     spy.restore();
   });
 });
+
+describe('Login: silencio de consola en cada rama de error', () => {
+  const cases: Array<[string, () => ReturnType<typeof jsonResponse>]> = [
+    ['401', () => jsonResponse(401, { data: null, error: 'x', status: 401 })],
+    ['5xx', () => jsonResponse(500, { data: null, error: 'x', status: 500 })],
+    [
+      'red',
+      () => {
+        throw new TypeError('network');
+      },
+    ],
+  ];
+  it.each(cases)('login %s no escribe nada en la consola', async (_name, respond) => {
+    const spy = spyConsole();
+    installFetch({ 'POST /api/auth/login': respond });
+    renderApp('/login');
+    const user = await fill(TEST_EMAIL, TEST_PASSWORD);
+    await user.click(screen.getByRole('button', { name: 'Log in' }));
+    await screen.findByRole('alert');
+    expect(spy.callCount()).toBe(0);
+    expect(spy.allArgs().join(' ')).not.toContain(TEST_PASSWORD);
+    spy.restore();
+  });
+});

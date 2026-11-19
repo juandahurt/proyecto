@@ -159,6 +159,23 @@ describe('api-client', () => {
   });
 
   describe('endpoints', () => {
+    it('loginRequest y registerRequest no envían Authorization aunque haya token, y un 401 de login no llama a onUnauthorized', async () => {
+      const token = fakeJwt();
+      const f401 = jest.fn(async (..._args: unknown[]) =>
+        jsonResponse(401, { data: null, error: 'x', status: 401 })
+      );
+      const a = setup(token, f401);
+      await loginRequest(a.client, { email: TEST_EMAIL, password: TEST_PASSWORD });
+      await registerRequest(a.client, { email: TEST_EMAIL, password: TEST_PASSWORD });
+      expect(f401).toHaveBeenCalledTimes(2);
+      for (const [, init] of f401.mock.calls) {
+        const names = Object.keys(headersOf(init as RequestInit)).map((k) => k.toLowerCase());
+        expect(names).not.toContain('authorization');
+        expect(JSON.stringify(init)).not.toContain(token);
+      }
+      expect(a.onUnauthorized).not.toHaveBeenCalled();
+    });
+
     it('loginRequest envía {email,password} por valor a POST /api/auth/login y devuelve el token', async () => {
       const token = fakeJwt();
       const { client, fetchFn } = setup(
