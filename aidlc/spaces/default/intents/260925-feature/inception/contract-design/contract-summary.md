@@ -390,6 +390,8 @@ components:
 
 Owner: TrustService.
 
+> **CORREGIDO (u0-T01, ola 10).** La implementación de trust (u11-T01) responde `GET /api/onboarding` con `200 {data:{completed},error:null,status:200}` y `POST /api/onboarding` con `200` y el mismo envoltorio (`422` si falta algún checkbox), no `{completed}` plano ni `204`. Manda el handler; el YAML de abajo se conserva como historia.
+
 ```yaml
 # OpenAPI snippet — TrustService user-facing endpoints
 openapi: "3.0.0"

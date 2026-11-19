@@ -92,7 +92,7 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
   npm test -w apps/frontend -- onboarding --coverage=false --verbose 2>&1 | grep -E "✓|✕|Tests:|Test Suites:"
   ```
 
-  Esperado: se renderizan 3 checkboxes con etiqueta **byte a byte** igual a `ONBOARDING_CHECKBOXES` (el test las compara contra la constante importada, no contra copias); con 0, 1 y 2 marcados `Get Started` está `disabled` y `aria-disabled="true"`; con los 3, activo; al pulsar envía `POST /api/onboarding` con `{checkbox1:true,checkbox2:true,checkbox3:true}` y el `Authorization` del usuario, y al recibir `204` navega a `/upload`; `422` y `5xx` muestran un error en `role="alert"` y **no** navegan. Marcar y desmarcar vuelve a deshabilitar el botón. **Mutación observable:** habilitar el botón con 2 marcados **hace fallar** el test.
+  Esperado: se renderizan 3 checkboxes con etiqueta **byte a byte** igual a `ONBOARDING_CHECKBOXES` (el test las compara contra la constante importada, no contra copias); con 0, 1 y 2 marcados `Get Started` está `disabled` y `aria-disabled="true"`; con los 3, activo; al pulsar envía `POST /api/onboarding` con `{checkbox1:true,checkbox2:true,checkbox3:true}` y el `Authorization` del usuario, y al recibir `200` (envoltorio) navega a `/upload`; `422` y `5xx` muestran un error en `role="alert"` y **no** navegan. Marcar y desmarcar vuelve a deshabilitar el botón. **Mutación observable:** habilitar el botón con 2 marcados **hace fallar** el test.
 
 - [ ] **CA-5** — Rutas y guardas (AC-11.1, AC-11.3, decisión 6).
 
@@ -131,6 +131,7 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
 
   ```bash
   npm test -w apps/frontend -- --coverage=false 2>&1 | grep -E "Tests:|Test Suites:"
+  npm run build -w packages/auth-middleware >/dev/null 2>&1
   for w in ingestion-service identity-service trust-service progress-service backend; do echo "== $w"; npm test -w apps/$w 2>&1 | grep -E "Tests:|Test Suites:"; done
   git diff main...HEAD --name-only -- apps/ingestion-service apps/identity-service apps/trust-service apps/progress-service apps/backend packages | wc -l
   ```
@@ -141,7 +142,7 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
 
   ```bash
   npx turbo run lint build --force 2>&1 | tail -6
-  git diff main...HEAD --name-only | xargs npx prettier --check
+  git diff main...HEAD --name-only | grep -v 'Dockerfile$' | xargs npx prettier --check
   ```
 
   Esperado: `Tasks: <n> successful, <n> total` con `0 cached` y sin fallidas (el frontend suma tareas); prettier limpio sobre el diff (`prettier --check .` global falla en `main` por C-51 y no cuenta). Sin cambios en `eslint.config.js`, `turbo.json` ni `.prettierrc` (si hicieron falta, ATENCIÓN y se justifican en la bitácora).
@@ -150,22 +151,26 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
 
   ```bash
   npm test -w apps/frontend -- --coverage 2>&1 | grep -E "All files|api|auth|pages|components"
-  git diff main...HEAD --name-only -- 'apps/frontend/jest.config.*' | wc -l
+  grep -n -A8 coverageThreshold apps/frontend/jest.config.*
   ```
 
-  Esperado: ≥ 80 % de líneas globales y ≥ 75 % de ramas en `src/api/` y `src/auth/` (el equivalente de `service/` y `handlers/` en esta app); la cobertura se mide sobre `src/**` excluyendo solo `main.tsx` y archivos `*.d.ts` (el `collectCoverageFrom` lo declara explícito); el `jest.config` de la tarea **nace** con esos pisos en `coverageThreshold` y la tarea no los baja.
+git log --diff-filter=A --format=%h --name-only main..HEAD -- 'apps/frontend/jest.config.*' | head -3
+
+````
+
+Esperado: ≥ 80 % de líneas globales y ≥ 75 % de ramas en `src/api/` y `src/auth/` (el equivalente de `service/` y `handlers/` en esta app); la cobertura se mide sobre `src/**` excluyendo solo `main.tsx` y archivos `*.d.ts` (el `collectCoverageFrom` lo declara explícito); el `jest.config` **nace** en esta tarea con esos pisos en `coverageThreshold` (los dos comandos de arriba lo muestran: el umbral está en el commit que crea el archivo) y nada los baja después.
 
 - [ ] **CA-12** — Dependencias nuevas acotadas, auditoría en verde y versiones fijadas por lockfile.
 
-  ```bash
-  git diff main...HEAD -- apps/frontend/package.json | grep -E '^\+ +"' | sort
-  git diff main...HEAD --name-only | grep -E "package(-lock)?\.json"
-  npm audit --audit-level=high >/dev/null 2>&1; echo "audit exit=$?"
-  git diff main...HEAD -- apps/frontend/package.json | grep -E '"(latest|next|\*)"' || echo "sin latest ni comodines"
-  git diff main...HEAD -- package.json | grep -E '^[-+] ' | grep -vE "^(---|\+\+\+)" || echo "package.json raiz sin cambios"
-  ```
+```bash
+git diff main...HEAD -- apps/frontend/package.json | grep -E '^\+ +"' | sort
+git diff main...HEAD --name-only | grep -E "package(-lock)?\.json"
+npm audit --audit-level=high >/dev/null 2>&1; echo "audit exit=$?"
+git diff main...HEAD -- apps/frontend/package.json | grep -E '"(latest|next|\*)"' | grep -v '@proyecto/' || echo "sin latest ni comodines"
+git diff main...HEAD -- package.json | grep -E '^[-+] ' | grep -vE "^(---|\+\+\+)" || echo "package.json raiz sin cambios"
+````
 
-  Esperado: solo las dependencias del frontend (React, Vite y su plugin, React Router, Tailwind v3 con PostCSS y Autoprefixer, `class-variance-authority`, `clsx`, `tailwind-merge`, Radix `checkbox`/`label`/`slot`, Jest con `jest-environment-jsdom`, React Testing Library con `jest-dom` y `user-event`, `ts-jest` y los `@types/*`); ninguna otra, y cada una **justificada en la bitácora**. Los únicos `package*.json` tocados son `apps/frontend/package.json` y `package-lock.json`. **`audit exit=0`** (regla del proyecto: `npm audit --audit-level=high` en rojo bloquea el merge; si una dependencia lo rompe, se cambia de versión o de librería, no se baja el umbral). Sin `latest`, `next` ni `*`. El `package.json` de la raíz no cambia.
+Esperado: solo las dependencias del frontend (React, Vite y su plugin, React Router, Tailwind v3 con PostCSS y Autoprefixer, `class-variance-authority`, `clsx`, `tailwind-merge`, Radix `checkbox`/`label`/`slot`, Jest con `jest-environment-jsdom`, React Testing Library con `jest-dom` y `user-event`, `ts-jest` y los `@types/*`); ninguna otra, y cada una **justificada en la bitácora**. Los únicos `package*.json` tocados son `apps/frontend/package.json` y `package-lock.json`. **`audit exit=0`** (regla del proyecto: `npm audit --audit-level=high` en rojo bloquea el merge; si una dependencia lo rompe, se cambia de versión o de librería, no se baja el umbral). Sin `latest`, `next` ni `*`. El `package.json` de la raíz no cambia.
 
 - [ ] **CA-13** — Manifiestos de `k8s/frontend/`: aserciones y servidor, sin tocar el cluster.
 
@@ -240,7 +245,7 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
   curl -s -o /dev/null -w "trends %{http_code}\n" http://localhost:3500/api/trends -H "Authorization: Bearer $T"
   ```
 
-  Esperado: `register 201`; `login 200`; `login-mala-clave 401`; `GET /api/onboarding` → `{"completed":false}` y luego `{"completed":true}` (tras el `204`), con `200`; `onboarding-422 422`; `onboarding-204 204`; `limits 200`; `trends 200` con `tier: "free"`. El límite de tamaño del borde se comprueba de forma estática en CA-13; esta tarea **no** sube archivos. Cierra el port-forward y deja constancia del email `*.test` creado. Ningún JWT ni contraseña en el informe ni en la bitácora.
+  Esperado: `register 201`; `login 200`; `login-mala-clave 401`; `GET /api/onboarding` → `{"data":{"completed":false},…}` y luego `{"data":{"completed":true},…}` (tras el `POST`), con `200`; `onboarding-422 422`; `onboarding-204` imprime **`200`** (el nombre de la etiqueta es histórico); `limits 200`; `trends 200` con `tier: "free"`. El límite de tamaño del borde se comprueba de forma estática en CA-13; esta tarea **no** sube archivos. Cierra el port-forward y deja constancia del email `*.test` creado. Ningún JWT ni contraseña en el informe ni en la bitácora.
 
 - [ ] **CA-17** — Sin secretos en el diff, el árbol ni el bundle (CA estándar, ampliado).
 
@@ -279,11 +284,21 @@ Qué pruebas se escriben **en esta tarea**, no después (Jest + React Testing Li
 
 ---
 
+## Fix de especificación (ronda 1, 2026-11-19)
+
+Errores del orquestador detectados por el codificador (ver `bitacoras/u0-T01.md`, ATENCIÓN 1 a 5):
+
+- **Forma de onboarding (CA-4, CA-16 y Notas):** copié del contrato C4 `GET` → `{completed}` y `POST` → `204`; el handler real de trust (`handlers/onboarding.ts`) responde `GET` `200 {data:{completed},error:null,status:200}` y `POST` `200` con el mismo envoltorio (`422` si falta algún checkbox). **Manda el handler.** El cliente del frontend acepta también la forma antigua (defensivo); no es obligatorio. El contrato `contract-summary.md` (C4) queda desactualizado: el orquestador lo anota.
+- **CA-9:** hay que compilar también `packages/auth-middleware` antes de correr los otros workspaces (`npm run build -w packages/auth-middleware`); el comando ya lo incluye.
+- **CA-10:** `prettier` no tiene parser para Dockerfile; el comando excluye `Dockerfile`.
+- **CA-11:** el `jest.config` nace en esta tarea, así que `wc -l` no puede dar `0`; la comprobación pasa a ser que el umbral existe y está en el commit que lo crea.
+- **CA-12:** el comodín `*` de la dependencia de workspace `@proyecto/shared-types` no es un `latest`; el codificador la fijó en `0.0.1` (npm la sigue enlazando como workspace). Se acepta; el `grep` ignora `@proyecto/`.
+
 ## Notas
 
 - **Archivos que se modifican en su sitio:** solo `package-lock.json` (nuevo contenido de dependencias). Todo lo demás es nuevo. Nada de duplicados con sufijo.
 - **Bitácora nueva `bitacoras/u0-T01.md`:** hash de la tarea, nombre y edad de **todos** los pods antes y después, estado «malo» inicial, salida roja inicial, las siete decisiones de diseño, la justificación de cada dependencia nueva, el resultado de `npm audit`, cada `docker build`/`kind load`/`apply`/`rollout` con su salida y cualquier **ATENCIÓN** (en especial la trampa de CommonJS de CA-1).
-- **Formas reales de las APIs:** envoltorio `{data, error, status}` en identity/ingestion/progress; el `POST /api/onboarding` de trust responde `204` sin cuerpo y el `GET` responde `{completed}` (mira `handlers/onboarding.ts` antes de escribir el cliente). Identity responde `401` en login erróneo y `409` en registro duplicado.
+- **Formas reales de las APIs:** envoltorio `{data, error, status}` en identity/ingestion/progress; el `POST` y el `GET` de `/api/onboarding` de trust responden `200` con el envoltorio (ver el «Fix de especificación»). Identity responde `401` en login erróneo y `409` en registro duplicado.
 - **Diseño visual:** sigue `design-system-mapping.md`: tokens (`blue-600` primario, `gray-50` fondo, `gray-200` bordes), tipografía y espaciado (barra lateral `w-64`, `px-8`, `p-6`). El logo es el texto «Estudio» con la «E» en un recuadro, como en los mockups; no inventes imágenes.
 - **Tailwind v3, no v4** (el mapeo de diseño asume v3). Los componentes estilo shadcn/ui se escriben a mano en `src/components/ui/` (no se ejecuta el CLI de shadcn: no hay red garantizada y genera archivos que no controlamos); basta `Button`, `Card`, `Checkbox`, `Input`, `Label` y `Alert`.
 - **Qué debe mirar el humano en el PR** (el revisor no puede abrir un navegador): `kubectl port-forward svc/frontend 3500:8080` y abrir `http://localhost:3500`: registrarse, ver el onboarding con los tres textos y el botón bloqueado, marcar los tres, entrar al cascarón de Upload, cerrar sesión, iniciar sesión de nuevo y comprobar que **no** vuelve a ver el onboarding. Es el único chequeo visual de esta tarea.
