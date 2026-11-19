@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   TEST_EMAIL,
@@ -139,5 +139,30 @@ describe('Register: silencio de consola en cada rama de error', () => {
     const user = await fill(TEST_EMAIL, TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     await screen.findByRole('alert');
+  });
+});
+
+describe('Register: doble envío', () => {
+  it('dos envíos síncronos con la petición en vuelo producen una sola llamada a fetch', async () => {
+    const pending = new Promise<ReturnType<typeof jsonResponse>>(() => undefined);
+    const f = installFetch({ 'POST /api/auth/register': () => pending });
+    renderApp('/register');
+    await fill(TEST_EMAIL, TEST_PASSWORD);
+    const form = screen.getByRole('button', { name: 'Create account' }).closest('form')!;
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+    expect(f.calls().filter((c) => c.key === 'POST /api/auth/register')).toHaveLength(1);
+  });
+
+  it('Enter y después un clic con la petición en vuelo producen una sola llamada', async () => {
+    const pending = new Promise<ReturnType<typeof jsonResponse>>(() => undefined);
+    const f = installFetch({ 'POST /api/auth/register': () => pending });
+    renderApp('/register');
+    const user = await fill(TEST_EMAIL, TEST_PASSWORD);
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: /Create account|Creating account/ }));
+    expect(f.calls().filter((c) => c.key === 'POST /api/auth/register')).toHaveLength(1);
   });
 });

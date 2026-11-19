@@ -12,7 +12,7 @@ export function LoadingScreen() {
 }
 
 function OnboardingLookupFailed() {
-  const { loadOnboarding } = useAuth();
+  const { loadOnboarding, logout } = useAuth();
   return (
     <div className="mx-auto max-w-md p-8">
       <Alert>
@@ -22,6 +22,9 @@ function OnboardingLookupFailed() {
       </Alert>
       <Button className="mt-4" onClick={loadOnboarding}>
         Retry
+      </Button>
+      <Button className="mt-4 ml-2" variant="outline" onClick={logout}>
+        Log out
       </Button>
     </div>
   );
