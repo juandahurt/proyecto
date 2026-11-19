@@ -65,7 +65,7 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
   ```bash
   git diff main...HEAD --name-only -- packages/shared-types
   grep -nE "TrendResponseSchema|CategoryTrendSchema|export type .* = z\.infer" packages/shared-types/src/trends.ts
-  grep -rlPz "z\.enum\(\[[^\]]*'locked'" apps packages --include='*.ts' --exclude-dir=node_modules --exclude-dir=dist | grep -v "packages/shared-types/src/trends.ts" || echo "sin enums duplicados"
+  find apps packages -name '*.ts' -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path 'packages/shared-types/src/trends.ts' -print0 | xargs -0 perl -0ne 'print "$ARGV\n" if /z\.enum\(\[[^\]]*\x27locked\x27/' | grep . || echo "sin enums duplicados"
   npx tsc --noEmit -p packages/shared-types && echo "tsc shared-types ok"
   ```
 
@@ -267,6 +267,15 @@ Qué pruebas se escriben **en esta tarea**, no después:
 ## Fix de especificación (antes del despacho, 2026-11-19)
 
 Error del orquestador: la tarea fijaba el puerto local **3401** para el port-forward de progress, pero lo ocupa un `node dist/index.js` del 15-nov (PID 82992, lanzado desde un worktree viejo ya en la Papelera) y un `curl` sin port-forward daría un falso verde (C-61, L45). **Todo el archivo usa ahora 3402** (progress); identity 3101 e ingestion 3202 estaban libres. No toques el proceso del 3401: no es de la tarea. Esto no cambia la autorización del humano, que sigue siendo `svc/progress-service` hacia un puerto local libre.
+
+## Fix de especificación (ronda 1, 2026-11-19)
+
+Errores del orquestador detectados por el codificador (ver `bitacoras/u7-T01.md`, ATENCIÓN 1 a 4):
+
+- **CA-1, tercer comando:** `grep -P` no existe en el `grep` BSD de macOS: salía con error y el `|| echo` imprimía «sin enums duplicados» igualmente (falso verde, L45/C-61). Sustituido por `find … | xargs -0 perl -0ne`, que ve enums de varias líneas. **Mutación observable:** el revisor copia un `z.enum(['locked', …])` a otro `.ts` fuera de `trends.ts` y el comando debe imprimir su ruta.
+- **CA-11:** turbo no imprime `Failed: 0`; lo correcto es `Tasks: 14 successful, 14 total` y `0 cached, 14 total`.
+- **CA-15:** tras `rollout status` el pod viejo sigue ~22 s en `Terminating`. «Un solo pod de progress» se mide esperando a que desaparezca (`kubectl wait --for=delete pod/<viejo> --timeout=60s`) y el criterio es que el pod `Running` sea uno solo y nuevo.
+- **CA-14:** `--dry-run=server` dice `configured` para el Deployment aunque ya esté aplicado; valida que el servidor acepta el manifiesto, no que sea idempotente. No se pide esa prueba.
 
 ## Notas
 
