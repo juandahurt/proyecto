@@ -396,6 +396,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** (a) acotar `immutable` a 200/206/304; (b) limpiar la bitácora; (c) exportar la constante. Todas triviales.
 
+### C-75 — Espía de consola global en los tests del frontend (F-10 y F-11 de u0-T01, abiertos)
+
+**Origen:** revisor de u0-T01 ronda 2 (F-10 ROJO y F-11 NARANJA). **Abiertos por decisión del humano** (no hubo ronda 3; la tarea se dejó con veredicto NO-VERDE). El código no escribe nada en la consola; falta la prueba que lo garantice: sobreviven con 102/102 verde N16/N17 (JWT en consola al terminar el onboarding) y N03, N04, N08, N10, N11, N13, N14 y N15 (rechazo en el cliente de login y registro, `token-store`, `logout`, error de `GET /api/onboarding`, 401 de onboarding).
+
+**Qué sería:** un espía de consola global en `helpers.tsx`, con un `afterEach` que afirme cero llamadas a `console.*` en **todos** los tests salvo los que lo desactiven con justificación; rojo primero con esas mutaciones. Solo tests; no cambia la imagen. Lo más natural es hacerlo al inicio de u0-T02, que ya toca esas pantallas.
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
