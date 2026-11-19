@@ -402,6 +402,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** un espía de consola global en `helpers.tsx`, con un `afterEach` que afirme cero llamadas a `console.*` en **todos** los tests salvo los que lo desactiven con justificación; rojo primero con esas mutaciones. Solo tests; no cambia la imagen. Lo más natural es hacerlo al inicio de u0-T02, que ya toca esas pantallas.
 
+### C-76 — Nadie incrementa el contador de subidas ni bloquea en 0 (AC-9.2 sin implementar)
+
+**Origen:** orquestador, al redactar u0-T02 (2026-11-19). `grep` sobre `apps/` y `packages/`: ningún servicio llama a `POST /api/internal/users/:userId/increment-counter`. u9-T01 construyó el contador y `GET /api/users/me/limits`, y dejó AC-9.2 «para la tarea de ingestion»; esa tarea nunca existió. Consecuencias hoy: `uploadsRemaining` es siempre 10; un usuario `free` sube sin límite; el estado de contador en 0 (mockup 2B) es inalcanzable.
+
+**Qué sería:** una tarea `u9-T02` en ingestion: antes de procesar, consultar el límite del usuario; tras aceptar la subida, incrementar el contador (también para `low_confidence`, FR-3.6/AC-3.3); con 0 restantes y tier `free`, responder el código acordado (FR-9.2 habla de 402) sin escribir el blob. Toca ingestion e identity (reinicios con ~41 s de corte, C-60). **Decisión del humano (2026-11-19): u0-T02 va solo con frontend y esto queda pendiente.** Hasta que se haga, el contador del frontend se prueba solo con falsos.
+
+### C-77 — «Was this critique useful?» no tiene API
+
+**Origen:** orquestador, al redactar u0-T02. El mockup 3A y el spec de interacción piden un voto Yes/No permanente por upload; `contract-summary.md` no define endpoint y `Assumptions` de `mockups.md` lo difiere a Functional Design. u0-T02 **no** pinta los botones (un botón sin endpoint sería un engaño).
+
+**Qué sería:** definir el endpoint (¿ingestion?), `shared-types`, persistencia y luego los botones.
+
+### C-78 — El listado de uploads no trae miniatura ni nombre
+
+**Origen:** orquestador, al redactar u0-T02. `GET /api/uploads` devuelve `uploadId`, `status`, `confidence`, `timestamp`, `scores` y `fallbackReason`; los mockups 2A y 4 muestran miniatura y nombre («hand study»). El servidor no guarda nombres (regla: nunca usar el del cliente) y la miniatura firmada solo sale en el detalle. u0-T02 muestra fecha, estado y «View».
+
+**Qué sería:** decidir si el listado incluye `thumbnailUrl` firmada (una firma por fila) y si se admite un título editable. Afecta también a u0-T03 (historial).
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
