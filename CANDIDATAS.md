@@ -228,7 +228,7 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** PVC por servicio (como `ingestion-blobs`) con `strategy: Recreate`, o aceptar explícitamente la pérdida. Decisión del humano.
 
-**Decisión del humano (ola 9, 2026-11-18):** PVC por servicio (identity y trust). Pendiente de redactar como tarea (toca el cluster: permisos tarea por tarea).
+**Decisión del humano (ola 9, 2026-11-18):** PVC por servicio (identity y trust). Redactada como `tareas/u14-T01-pvc-identity-trust.md` (también despliega bcrypt 6 de identity); espera permisos de cluster del humano.
 
 ### C-44 — Sin tope al tamaño de la respuesta de ingestion en ProgressService
 
