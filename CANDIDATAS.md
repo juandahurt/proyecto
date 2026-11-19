@@ -332,6 +332,22 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** aceptarlo para el MVP local o crear una StorageClass con `Retain`. Decisión del humano si el entorno se vuelve compartido.
 
+### C-63 — Módulo común en progress-service para `isTimeout` y el mapeo fallo → HTTP
+
+**Origen:** revisor de u7-T01 ronda 1 (F-04, amarillo). `identity-client.ts` repite `isTimeout` de `ingestion-client.ts` y `handlers/trends.ts` repite el switch de `history.ts`; era forzoso porque esos archivos estaban fuera de alcance.
+
+**Qué sería:** extraer ambos a un módulo común y que history, trends y los dos clientes lo usen.
+
+### C-64 — `claude-client.ts` tiene su propio mapa de nombres de categoría
+
+**Origen:** revisor de u7-T01 ronda 1. `apps/ingestion-service/src/service/claude-client.ts:72` duplica el mapa de `CATEGORY_NAME_BY_ID`, que ya vive en `packages/shared-types/src/trends.ts` (única fuente según `project.md`).
+
+**Qué sería:** que ingestion importe el mapa de `shared-types`. Si hay que moverlo a `anthropic.ts`, hacerlo en esa tarea.
+
+### C-65 — Usuarios y datos E2E de prueba en identity e ingestion
+
+**Origen:** revisor de u7-T01 ronda 1. Quedan `rev-u7t01-{a,b}-<epoch>@rev.test` (A es `paid` con 5 uploads, B es `free` con 1). Inofensivo; se anota por si el humano quiere un entorno limpio.
+
 ## Cerradas
 
 ### C-41 — `uploads.timestamp` con resolución de segundos
