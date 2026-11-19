@@ -298,6 +298,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 ---
 
+### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
+
+**Origen:** revisor de u6-T01 ronda 1. Nadie llama aún a `loadTrendConfig`, así que «falla al arrancar con configuración inválida» no se observa de punta a punta.
+
+**Qué sería:** en u7, llamarlo en `server.ts` al arrancar, con un test de arranque fallido.
+
+### C-57 — Los CA que hacen grep de `Tests:` ocultan las suites que no compilan
+
+**Origen:** revisor de u6-T01 ronda 1. En el árbol principal, `node_modules` está desactualizado (faltan `multer` y `@anthropic-ai/sdk`): fallan 5 suites de ingestion y Jest aun así imprime `Tests: 111 passed`.
+
+**Qué sería:** añadir `Test Suites:` a los grep de los CA y hacer `npm ci` en el árbol principal. Lo segundo lo decide el humano (es su árbol).
+
 ## Cerradas
 
 ### C-41 — `uploads.timestamp` con resolución de segundos
