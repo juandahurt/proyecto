@@ -294,6 +294,18 @@ Errores del orquestador detectados por el codificador (ver `bitacoras/u0-T01.md`
 - **CA-11:** el `jest.config` nace en esta tarea, así que `wc -l` no puede dar `0`; la comprobación pasa a ser que el umbral existe y está en el commit que lo crea.
 - **CA-12:** el comodín `*` de la dependencia de workspace `@proyecto/shared-types` no es un `latest`; el codificador la fijó en `0.0.1` (npm la sigue enlazando como workspace). Se acepta; el `grep` ignora `@proyecto/`.
 
+## Fix de especificación (ronda 2, 2026-11-19)
+
+Hallazgos de la ronda 1 que entran en la ronda 2 (ver `revisiones/u0-T01/ronda-1.md`): F-01 a F-05 y la parte `/api` de F-06. Cambios a los criterios:
+
+- **Tag de la imagen de la ronda 2: `frontend:u0-T01-r2`** (F-04 cambia código y F-05 cambia el ConfigMap, así que la imagen cambia: nunca se reutiliza `u0-T01`, L11). `k8s/frontend/deployment.yaml` pasa a `image: frontend:u0-T01-r2`. En CA-14 y CA-15 donde dice `frontend:u0-T01` léase `frontend:u0-T01-r2`.
+- **CA-7 (F-01):** el espía de consola afirma `callCount() === 0` en **cada rama de error**: login `401`/`5xx`/red, registro `409`/`5xx`/red y onboarding `422`/`5xx`/red, además del éxito. **Mutación observable:** `console.error(email, password)` en el `401` del login, `console.warn` en el `409` del registro y `console.error(api)` en el `5xx` de onboarding **hacen fallar** esos tests.
+- **CA-2 y CA-3 (F-03):** un test de endpoint **con token presente** afirma que `loginRequest` y `registerRequest` **no** envían `Authorization`, y que un `401` de login **no** llama a `onUnauthorized`. **Mutación observable:** quitar `auth:false` en cualquiera de las dos **hace fallar** el test.
+- **CA-3 (F-04):** el mensaje del mínimo de contraseña se **deriva del schema compartido** (el `minimum` del issue de Zod o el mensaje del schema), sin el literal `8` escrito a mano en `src/pages/credentials.ts`; y un fallo que no sea del campo contraseña no se traduce a ese mensaje.
+- **CA-13 y CA-15 (F-05 y F-06):** el `Cache-Control: public, max-age=31536000, immutable` va **solo en respuestas 200** de `/assets/` (sin `always` o con un `error_page` que lleve `no-store`). Comprobación nueva en vivo: `curl -sI http://localhost:3500/assets/nope.js` da `404` **sin** `immutable` ni `max-age=31536000`. `GET /api` (sin barra final) **no** devuelve `index.html`: da el `404` JSON o el de nginx. `/favicon.ico` queda fuera.
+- **Bitácora (F-02):** se **vuelven a correr** todos los CA tras el último commit y se pegan las salidas **literales dentro de bloques de código** (con ```), una sección por CA, sin títulos vacíos ni duplicados. Prettier no reescribe el contenido de un bloque de código. La salida de CA-12 debe mostrar `"@proyecto/shared-types": "0.0.1"`.
+- Fuera de la ronda 2 (candidatas C-68 a C-72): F-07, F-08, F-09 y el resto.
+
 ## Notas
 
 - **Archivos que se modifican en su sitio:** solo `package-lock.json` (nuevo contenido de dependencias). Todo lo demás es nuevo. Nada de duplicados con sufijo.
