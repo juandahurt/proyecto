@@ -179,6 +179,22 @@ El revisor hará mutaciones propias: p. ej., comprobar que el dato sobrevive de 
 
 ---
 
+## Fix de especificación (ronda 1, 2026-11-19)
+
+Errores del orquestador detectados por el codificador (ver `bitacoras/u14-T01.md`, «ATENCIÓN»):
+
+- **CA-3, segundo `run`:** el `node -p "Object.keys(require(...))"` no verificaba nada. El comando correcto es solo
+  `docker run --rm --entrypoint sh identity-service:u14-T01 -c 'ls /app/node_modules | grep -cE "^(tar|node-pre-gyp)$"; find /app -type d \( -name tar -o -name node-pre-gyp \) | head'`
+  Esperado: imprime `0` y el `find` no lista nada. (`bcrypt` está en el `node_modules` raíz por hoisting de workspaces; la comprobación de versión del primer `run` sigue valiendo.)
+- **CA-4, comparación de digests:** con containerd los tres identificadores son niveles distintos de la misma imagen y **no coinciden literalmente**. La cadena que hay que verificar es:
+  1. `docker image inspect identity-service:u14-T01 --format '{{.Id}}'` da `sha256:A` (digest del manifiesto).
+  2. El `imageID` del pod es el índice OCI `sha256:B`. `docker exec kind-control-plane ctr -n k8s.io content get sha256:B` lista como único manifiesto `sha256:A`.
+  3. `docker exec kind-control-plane ctr -n k8s.io images ls | grep identity-service:u14-T01` apunta el tag a `sha256:A`.
+  4. El `id` de `crictl inspecti` es el config digest (un tercer valor); solo se registra, no se compara.
+     Esperado: `A` coincide en 1, 2 y 3.
+- **CA-5 y CA-6, `ls -l /app/data`:** las bases corren en modo WAL; además de `identity.db` / `trust.db` el `ls` muestra `-shm` y `-wal`. Es normal.
+- **Límite del revisor:** el revisor **no** repite `rollout restart`, `apply`, `kind load` ni `docker build` (límites de siempre). Comprueba la persistencia con lecturas: el archivo `.db` es anterior al pod actual (su fecha de creación o la presencia de los datos de la prueba del codificador), el PVC está `Bound` y montado, y un usuario nuevo se registra y puede iniciar sesión. Si considera indispensable reproducir el reinicio, lo reporta como «no verificable» y el orquestador lo plantea al humano.
+
 ## Notas
 
 - Archivos que se **modifican en su sitio**: `k8s/identity/deployment.yaml` y `k8s/trust/deployment.yaml`. Archivos **nuevos**: `k8s/identity/pvc.yaml` y `k8s/trust/pvc.yaml` (copia el molde de `k8s/ingestion/pvc.yaml`, nombres `identity-data` y `trust-data`, 1Gi; ajusta etiquetas `app:`). Nada de duplicados con sufijo.
