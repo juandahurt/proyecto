@@ -8,7 +8,6 @@ import {
   currentPath,
   dropOn,
   expectFileNameAbsent,
-  fileInput,
   jsonResponse,
   makeFile,
   setupApp,
