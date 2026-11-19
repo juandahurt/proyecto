@@ -290,12 +290,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 ---
 
-### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
-
-**Origen:** revisor de u6-T01 ronda 1. Nadie llama aún a `loadTrendConfig`, así que «falla al arrancar con configuración inválida» no se observa de punta a punta.
-
-**Qué sería:** en u7, llamarlo en `server.ts` al arrancar, con un test de arranque fallido.
-
 ### C-57 — Los CA que hacen grep de `Tests:` ocultan las suites que no compilan
 
 **Origen:** revisor de u6-T01 ronda 1. En el árbol principal, `node_modules` está desactualizado (faltan `multer` y `@anthropic-ai/sdk`): fallan 5 suites de ingestion y Jest aun así imprime `Tests: 111 passed`.
@@ -361,6 +355,10 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Qué sería:** comparar sin distinguir mayúsculas, buscar cada segmento del JWT, espiar también `stderr`, añadir `expect(res.status)` por escenario y extraer un helper común de silencio de logs entre `history.test.ts` y `trends.test.ts`. Solo tests; no cambia la imagen.
 
 ## Cerradas
+
+### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
+
+**Cerrada por u7-T01 (PR #23, `fdeb2da`):** `createApp` llama a `loadTrendConfig(process.env)` al arrancar, con tests de arranque fallido y de efecto de `TREND_MIN_UPLOADS`; `IDENTITY_URL` es obligatoria.
 
 ### C-41 — `uploads.timestamp` con resolución de segundos
 
