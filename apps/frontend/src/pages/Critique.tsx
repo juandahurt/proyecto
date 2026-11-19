@@ -145,7 +145,9 @@ export default function Critique() {
 
       {view.kind === 'not-found' && (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-gray-700">We couldn&apos;t find that critique.</p>
+          <p role="alert" className="text-sm text-gray-700">
+            We couldn&apos;t find that critique.
+          </p>
           <Link to="/upload" className="text-sm font-medium text-blue-600 hover:text-blue-700">
             Back to upload
           </Link>

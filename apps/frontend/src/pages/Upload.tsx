@@ -43,7 +43,7 @@ export default function Upload() {
     const out = await uploadImage(api, file);
     busy.current = false;
     if (out.ok && out.data) {
-      void refreshLimits();
+      void refreshLimits({ fresh: true });
       void refreshRecent();
       navigate(`/uploads/${out.data.uploadId}`);
       return;

@@ -3,18 +3,19 @@ import {
   assertConsoleSilent,
   installConsoleGuard,
   isConsoleAllowed,
-  restoreConsole,
+  resetConsoleGuard,
 } from './src/__tests__/console-guard';
 
-beforeEach(() => {
-  installConsoleGuard();
-});
+// Una sola vez, al cargar este archivo (antes de importar tests o código de producción): los alias
+// de `console` guardados a nivel de módulo ya apuntan a la guarda.
+installConsoleGuard();
 
-// Se comprueba ANTES de restaurar: restaurar primero borraría la evidencia.
+// Se comprueba al terminar cada test y solo entonces se reinicia: lo que se escriba entre dos tests
+// o al cargar un módulo falla el test siguiente en lugar de perderse.
 afterEach(() => {
   try {
     if (!isConsoleAllowed()) assertConsoleSilent();
   } finally {
-    restoreConsole();
+    resetConsoleGuard();
   }
 });

@@ -1,7 +1,8 @@
 /**
- * Guarda global de consola (C-75). Se instala desde `jest.setup.ts`, por lo que corre en TODOS
- * los archivos de test. Registra cada llamada a la consola y, al terminar cada test, falla si hubo
- * alguna (antes de restaurar los métodos originales). Un test que necesite escribir en la consola
+ * Guarda global de consola (C-75). Se instala una vez al cargar `jest.setup.ts`, por lo que corre en
+ * TODOS los archivos de test y nunca se restaura. Registra cada llamada a la consola y, al terminar
+ * cada test, falla si hubo alguna. Una llamada diferida (`setTimeout`) se atribuye al test que esté
+ * corriendo cuando se dispara; una llamada entre tests o al cargar un módulo falla el test siguiente. Un test que necesite escribir en la consola
  * debe declararlo con `allowConsole(razon)`; el valor por defecto es el silencio total.
  */
 
@@ -38,7 +39,11 @@ function describeArg(arg: unknown): string {
   }
 }
 
-/** Sustituye los métodos de la consola por registradores silenciosos y limpia el estado. */
+/**
+ * Sustituye los métodos de la consola por registradores silenciosos. Se llama UNA vez, al cargar
+ * `jest.setup.ts`, antes de que se importe ningún archivo de test ni de producción: así un alias
+ * guardado a nivel de módulo (`const dbg = console.error`) ya apunta al registrador.
+ */
 export function installConsoleGuard(): void {
   if (originals === null) {
     originals = {};
@@ -47,8 +52,6 @@ export function installConsoleGuard(): void {
       originals[method] = target[method];
     }
   }
-  calls = [];
-  allowed = null;
   const target = console as unknown as ConsoleLike;
   for (const method of GUARDED_METHODS) {
     target[method] = (...args: unknown[]) => {
@@ -57,7 +60,13 @@ export function installConsoleGuard(): void {
   }
 }
 
-/** Devuelve los métodos originales de la consola. */
+/** Borra las llamadas registradas y el permiso del test. Lo usa el `afterEach` global. */
+export function resetConsoleGuard(): void {
+  calls = [];
+  allowed = null;
+}
+
+/** Devuelve los métodos originales de la consola (solo para pruebas de la propia guarda). */
 export function restoreConsole(): void {
   if (originals === null) return;
   const target = console as unknown as ConsoleLike;

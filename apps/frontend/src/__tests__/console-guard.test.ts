@@ -2,7 +2,7 @@ import {
   allowConsole,
   assertConsoleSilent,
   GUARDED_METHODS,
-  installConsoleGuard,
+  resetConsoleGuard,
 } from './console-guard';
 
 // Alias guardados al CARGAR el módulo de test (después de jest.setup.ts, antes de cualquier test):
@@ -50,10 +50,10 @@ describe('console-guard', () => {
     expect(() => allowConsole('   ')).toThrow(/non-empty reason/);
   });
 
-  it('installConsoleGuard reinicia las llamadas registradas', () => {
+  it('resetConsoleGuard reinicia las llamadas registradas', () => {
     allowConsole('probar la propia guarda: el afterEach global no debe fallar este test');
     console.warn('antes');
-    installConsoleGuard();
+    resetConsoleGuard();
     expect(() => assertConsoleSilent()).not.toThrow();
   });
 });
