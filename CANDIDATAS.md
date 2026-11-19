@@ -348,6 +348,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Origen:** revisor de u7-T01 ronda 1. Quedan `rev-u7t01-{a,b}-<epoch>@rev.test` (A es `paid` con 5 uploads, B es `free` con 1). Inofensivo; se anota por si el humano quiere un entorno limpio.
 
+### C-66 — `CategoryTrendSchema` no es estricto ni ata `categoryId` a `categoryName`
+
+**Origen:** revisor de u7-T01 ronda 1 (F-02, amarillo). `{status:'locked', slope:3}` valida porque Zod elimina las claves extra, y `{categoryId:'CAT-1', categoryName:'Perspective'}` también. Hoy las fugas de `slope` o `qualifiedCount` solo las cubren los `not.toContain` de los tests.
+
+**Qué sería:** `.strict()` en `CategoryTrendSchema` y `TrendResponseSchema` y comprobar `categoryName === CATEGORY_NAME_BY_ID[categoryId]` en el `refine`. Cambia `shared-types`, así que exige imagen nueva y redespliegue de progress-service: va en una tarea propia o junto al frontend.
+
 ## Cerradas
 
 ### C-41 — `uploads.timestamp` con resolución de segundos
