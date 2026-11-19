@@ -531,6 +531,8 @@ breaking_change_policy: >
 
 Used by ProgressService (u7) to determine tier before returning trend data. Called on every trend API request; no caching.
 
+> **SUPERADO (decisión de diseño del orquestador, ola 10, u7-T01; el humano puede objetarla).** No se construye el endpoint interno `/api/internal/users/{userId}/tier`: exigiría tocar y reiniciar identity y publicaría el tier de cualquier `userId` sin autenticación (no hay `NetworkPolicy`). C6 pasa a ser un **contrato HTTP con el JWT del usuario**: ProgressService llama a `GET /api/users/me/limits` de identity **reenviando solo `Authorization`** y valida el cuerpo con `LimitsResponseSchema` (`packages/shared-types/src/limits.ts`; `tier` es `free` o `paid`). Sigue sin caché: una llamada por cada petición a `/api/trends`. Si identity falla, ProgressService no devuelve datos de tendencia (401/504/502), nunca asume un tier. El texto original se conserva como historia.
+
 ```yaml
 # OpenAPI snippet — IdentityService internal endpoint
 openapi: "3.0.0"
