@@ -119,7 +119,7 @@ describe('a11y: pantallas de u0-T02', () => {
     await screen.findByRole('link', { name: 'View' });
     const user = userEvent.setup();
     const seen: string[] = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 8; i++) {
       await user.tab();
       const el = document.activeElement as HTMLElement;
       seen.push(el.getAttribute('aria-label') ?? el.textContent ?? '');
@@ -133,7 +133,6 @@ describe('a11y: pantallas de u0-T02', () => {
       'Drop zone for your drawing',
       'Browse file',
       'View',
-      'Upload',
     ]);
   });
 

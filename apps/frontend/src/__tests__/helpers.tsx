@@ -228,6 +228,18 @@ afterEach(() => {
 export const zone = () => screen.getByRole('group', { name: 'Drop zone for your drawing' });
 export const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
 
-export function dropOn(target: Element, files: File[]) {
-  fireEvent.drop(target, { dataTransfer: { files, types: ['Files'] } });
+/** DataTransfer mínimo que entiende `file-selector` (necesita `items` con `kind` y `getAsFile`). */
+export function dataTransferOf(files: File[]) {
+  return {
+    files,
+    types: ['Files'],
+    items: files.map((f) => ({ kind: 'file', type: f.type, getAsFile: () => f })),
+  };
 }
+
+export function dropOn(target: Element, files: File[]) {
+  fireEvent.drop(target, { dataTransfer: dataTransferOf(files) });
+}
+
+/** La barra lateral solo existe cuando el onboarding ya se resolvió. */
+export const sidebar = () => screen.findByRole('complementary');

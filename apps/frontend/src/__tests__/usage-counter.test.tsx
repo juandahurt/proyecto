@@ -1,17 +1,17 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { UPLOAD_ID, currentPath, jsonResponse, limitsOk, setupApp } from './helpers';
-
-const sidebar = () => screen.getByRole('complementary');
+import { UPLOAD_ID, currentPath, jsonResponse, limitsOk, setupApp, sidebar } from './helpers';
 
 describe('contador de tier en la barra lateral (US-9, AC-9.1)', () => {
   it.each(['/upload', `/uploads/${UPLOAD_ID}`])(
     'free con 7 de 10 muestra el contador exacto y el enlace Upgrade en %s',
     async (path) => {
       setupApp(path, { 'GET /api/users/me/limits': () => limitsOk() });
-      expect(await within(sidebar()).findByText('7 of 10 uploads left this month')).toBeVisible();
-      expect(within(sidebar()).getByText('Free')).toBeInTheDocument();
-      expect(within(sidebar()).getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      expect(
+        await within(await sidebar()).findByText('7 of 10 uploads left this month')
+      ).toBeVisible();
+      expect(within(await sidebar()).getByText('Free')).toBeInTheDocument();
+      expect(within(await sidebar()).getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
         'href',
         '/upgrade'
       );
@@ -23,15 +23,17 @@ describe('contador de tier en la barra lateral (US-9, AC-9.1)', () => {
       'GET /api/users/me/limits': () =>
         limitsOk({ tier: 'paid', uploadsRemaining: null, uploadsLimit: null, resetDate: null }),
     });
-    expect(await within(sidebar()).findByText('Paid')).toBeInTheDocument();
-    expect(within(sidebar()).queryByText(/uploads left this month/)).toBeNull();
-    expect(within(sidebar()).queryByRole('link', { name: 'Upgrade' })).toBeNull();
+    expect(await within(await sidebar()).findByText('Paid')).toBeInTheDocument();
+    expect(within(await sidebar()).queryByText(/uploads left this month/)).toBeNull();
+    expect(within(await sidebar()).queryByRole('link', { name: 'Upgrade' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Upgrade' })).toBeNull();
   });
 
   it('falla limits (5xx): «Upload count unavailable» y la zona sigue activa', async () => {
     setupApp('/upload', { 'GET /api/users/me/limits': () => jsonResponse(500, {}) });
-    expect(await within(sidebar()).findByText('Upload count unavailable')).toBeInTheDocument();
+    expect(
+      await within(await sidebar()).findByText('Upload count unavailable')
+    ).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Drop zone for your drawing' })).toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).not.toBeNull();
   });
@@ -42,13 +44,17 @@ describe('contador de tier en la barra lateral (US-9, AC-9.1)', () => {
         throw new TypeError('network');
       },
     });
-    expect(await within(sidebar()).findByText('Upload count unavailable')).toBeInTheDocument();
+    expect(
+      await within(await sidebar()).findByText('Upload count unavailable')
+    ).toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).not.toBeNull();
   });
 
   it('una respuesta que no cumple LimitsResponseSchema es «no disponible»', async () => {
     setupApp('/upload', { 'GET /api/users/me/limits': () => limitsOk({ tier: 'gold' }) });
-    expect(await within(sidebar()).findByText('Upload count unavailable')).toBeInTheDocument();
+    expect(
+      await within(await sidebar()).findByText('Upload count unavailable')
+    ).toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).not.toBeNull();
   });
 });
@@ -69,7 +75,9 @@ describe('estado en 0 (US-9, AC-9.2, pantalla 2B)', () => {
     expect(screen.queryByRole('group', { name: 'Drop zone for your drawing' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Browse file' })).toBeNull();
     expect(document.querySelector('input[type="file"]')).toBeNull();
-    expect(within(sidebar()).getByText('0 of 10 uploads left this month')).toBeInTheDocument();
+    expect(
+      within(await sidebar()).getByText('0 of 10 uploads left this month')
+    ).toBeInTheDocument();
   });
 
   it('la fecha no lleva cero a la izquierda ni depende de la zona horaria', async () => {

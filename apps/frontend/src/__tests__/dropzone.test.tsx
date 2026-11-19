@@ -6,6 +6,7 @@ import {
   acceptedOk,
   countOf,
   currentPath,
+  dataTransferOf,
   dropOn,
   fileInput,
   makeFile,
@@ -87,9 +88,9 @@ describe('DropZone: estado de arrastre y teclado', () => {
   it('al arrastrar sobre la zona dice «Drop to upload»; al salir vuelve al original', async () => {
     await openUpload();
     expect(zone()).toHaveTextContent('Drag your image here, or');
-    fireEvent.dragEnter(zone(), { dataTransfer: { files: [], types: ['Files'] } });
+    fireEvent.dragEnter(zone(), { dataTransfer: dataTransferOf([makeFile('image/jpeg')]) });
     await waitFor(() => expect(zone()).toHaveTextContent('Drop to upload'));
-    fireEvent.dragLeave(zone(), { dataTransfer: { files: [], types: ['Files'] } });
+    fireEvent.dragLeave(zone(), { dataTransfer: dataTransferOf([makeFile('image/jpeg')]) });
     await waitFor(() => expect(zone()).toHaveTextContent('Drag your image here, or'));
     expect(zone()).not.toHaveTextContent('Drop to upload');
   });

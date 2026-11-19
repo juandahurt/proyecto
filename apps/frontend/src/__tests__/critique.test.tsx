@@ -49,7 +49,7 @@ describe('Critique (3A)', () => {
     expect(img).toHaveAttribute('src', THUMBNAIL);
   });
 
-  it.each(['https://example.test/x.png', 'javascript:alert(1)', '', '//evil.test/api/uploads/x'])(
+  it.each(['https://example.test/x.png', 'javascript:alert(1)', '//evil.test/api/uploads/x'])(
     'thumbnailUrl %j no se pinta como <img>',
     async (url) => {
       open({ thumbnailUrl: url });
@@ -57,6 +57,12 @@ describe('Critique (3A)', () => {
       expect(document.querySelector('img')).toBeNull();
     }
   );
+
+  it('thumbnailUrl vacío no pinta <img> (el schema lo rechaza: error de carga, no una crítica con imagen rota)', async () => {
+    open({ thumbnailUrl: '' });
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this critique');
+    expect(document.querySelector('img')).toBeNull();
+  });
 
   it('sin thumbnailUrl no hay <img> y la página no se rompe', async () => {
     open({ thumbnailUrl: undefined });

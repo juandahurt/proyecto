@@ -57,7 +57,9 @@ describe('guarda: pantalla de error al consultar el onboarding (C-68)', () => {
     renderApp('/upload');
     await screen.findByRole('alert');
     await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }));
-    await waitFor(() => expect(f.count()).toBe(2));
+    await waitFor(() =>
+      expect(f.calls().filter((c) => c.key === 'GET /api/onboarding')).toHaveLength(2)
+    );
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
   });
 
