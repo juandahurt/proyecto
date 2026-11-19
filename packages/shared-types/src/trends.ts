@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CategoryIdSchema } from './anthropic';
-import { UploadListItemSchema } from './uploads';
+import { CategoryCritiqueSchema, UploadListItemSchema } from './uploads';
 
 // =============================================================================
 // C3 — Resultado de tendencia por categoría (u6-T01)
@@ -27,7 +27,7 @@ export const TrendStatus = {
 /** Punto de la serie: un upload calificado de la categoría. */
 export const TrendPointSchema = z.object({
   uploadId: UploadListItemSchema.shape.uploadId,
-  score: z.number().int().min(0).max(100),
+  score: CategoryCritiqueSchema.shape.score,
   timestamp: UploadListItemSchema.shape.timestamp,
 });
 
