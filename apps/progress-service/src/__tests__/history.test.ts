@@ -46,7 +46,7 @@ describe('GET /api/trends/history', () => {
   });
 
   function app(timeoutMs = 2000) {
-    return createApp({ ingestionUrl: fake.url, timeoutMs });
+    return createApp({ ingestionUrl: fake.url, identityUrl: 'http://127.0.0.1:1', timeoutMs });
   }
 
   function loggedText(): string {
@@ -255,7 +255,9 @@ describe('GET /api/trends/history', () => {
 
     it('conexion rechazada (puerto cerrado) -> 502 Upstream unavailable', async () => {
       const closed = await closedPortUrl();
-      const res = await request(createApp({ ingestionUrl: closed, timeoutMs: 2000 }))
+      const res = await request(
+        createApp({ ingestionUrl: closed, identityUrl: 'http://127.0.0.1:1', timeoutMs: 2000 })
+      )
         .get('/api/trends/history')
         .set('Authorization', auth());
       expect(res.status).toBe(502);
@@ -334,7 +336,9 @@ describe('GET /api/trends/history', () => {
       await hit(200, listBody([{ ...readyItem(ID_1, T1), status: 'x' }]));
       await hit(200, listBody([]), 600, 50);
       const closed = await closedPortUrl();
-      await request(createApp({ ingestionUrl: closed, timeoutMs: 2000 }))
+      await request(
+        createApp({ ingestionUrl: closed, identityUrl: 'http://127.0.0.1:1', timeoutMs: 2000 })
+      )
         .get('/api/trends/history')
         .set('Authorization', `Bearer ${token}`);
       fake.respond(302, '', 0, { Location: '/api/otra' });
@@ -364,7 +368,9 @@ describe('GET /api/trends/history', () => {
       expect(spies[1]).toHaveBeenCalledWith('[history] upstream error status=503');
       spies[1].mockClear();
       const closed = await closedPortUrl();
-      await request(createApp({ ingestionUrl: closed, timeoutMs: 2000 }))
+      await request(
+        createApp({ ingestionUrl: closed, identityUrl: 'http://127.0.0.1:1', timeoutMs: 2000 })
+      )
         .get('/api/trends/history')
         .set('Authorization', `Bearer ${token}`);
       expect(spies[1]).toHaveBeenCalledWith('[history] upstream error');
