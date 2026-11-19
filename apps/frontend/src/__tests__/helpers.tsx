@@ -194,7 +194,13 @@ export function countOf(f: FakeFetch, key: string): number {
 
 function LocationProbe() {
   const loc = useLocation();
-  return <div data-testid="location">{loc.pathname}</div>;
+  return (
+    <>
+      <div data-testid="location">{loc.pathname}</div>
+      <div data-testid="location-search">{loc.search}</div>
+      <div data-testid="location-hash">{loc.hash}</div>
+    </>
+  );
 }
 
 const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true } as const;
@@ -210,6 +216,21 @@ export function renderApp(path: string) {
 
 export function currentPath(): string {
   return document.querySelector('[data-testid="location"]')?.textContent ?? '';
+}
+
+/** Ubicación completa: pathname + search + hash (`window.location` no cambia bajo MemoryRouter). */
+export function fullLocation(): string {
+  const text = (id: string) => document.querySelector(`[data-testid="${id}"]`)?.textContent ?? '';
+  return text('location') + text('location-search') + text('location-hash');
+}
+
+/** El nombre del archivo del usuario no sale del `File`: ni ubicación, ni DOM, ni almacenamiento. */
+export function expectFileNameAbsent(name: string) {
+  expect(fullLocation()).not.toContain(name);
+  expect(fullLocation()).not.toContain(encodeURIComponent(name));
+  expect(document.body.innerHTML).not.toContain(name);
+  expect(JSON.stringify({ ...window.localStorage })).not.toContain(name);
+  expect(JSON.stringify({ ...window.sessionStorage })).not.toContain(name);
 }
 
 export function headersOf(init: RequestInit): Record<string, string> {

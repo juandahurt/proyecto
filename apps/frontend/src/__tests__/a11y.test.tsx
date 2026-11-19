@@ -206,4 +206,16 @@ describe('a11y: pantallas de u0-T02', () => {
       within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link')
     ).toHaveLength(3);
   });
+
+  it.each([
+    ['404', () => jsonResponse(404, {}), UPLOAD_ID],
+    ['403', () => jsonResponse(403, {}), UPLOAD_ID],
+    ['uploadId que no es UUID', () => jsonResponse(404, {}), 'no-es-uuid'],
+  ])('crítica «no encontrado» (%s) se anuncia con role=alert', async (_n, respond, id) => {
+    setupApp(`/uploads/${id}`, { [`GET /api/uploads/${id}`]: respond as never });
+    const msg = await screen.findByText("We couldn't find that critique.");
+    expect(msg.closest('[role=alert],[role=status],[aria-live]')).not.toBeNull();
+    expect(msg.closest('[role=alert]')).not.toBeNull();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
 });

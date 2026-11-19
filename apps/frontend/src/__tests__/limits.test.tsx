@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   UPLOAD_ID,
@@ -44,5 +44,28 @@ describe('lectura de limits', () => {
     await userEvent.setup().click(screen.getByRole('link', { name: 'Upload' }));
     await waitFor(() => expect(currentPath()).toBe('/upload'));
     await waitFor(() => expect(countOf(f, 'GET /api/users/me/limits')).toBe(2));
+  });
+
+  it('la relectura tras el 202 no reutiliza una lectura de entrada aún en vuelo (F-05)', async () => {
+    let release: (r: ReturnType<typeof limitsOk>) => void = () => undefined;
+    const slow = new Promise<ReturnType<typeof limitsOk>>((r) => (release = r));
+    let n = 0;
+    const { f } = setupApp('/upload', {
+      'GET /api/users/me/limits': () =>
+        n++ === 0 ? (slow as never) : limitsOk({ uploadsRemaining: 6 }),
+      'POST /api/uploads': () => acceptedOk(),
+    });
+    dropOn(await screen.findByRole('group', { name: 'Drop zone for your drawing' }), [
+      makeFile('image/jpeg'),
+    ]);
+    await waitFor(() => expect(currentPath()).toBe(`/uploads/${UPLOAD_ID}`));
+    await within(await sidebar()).findByText('6 of 10 uploads left this month');
+    expect(countOf(f, 'GET /api/users/me/limits')).toBe(2);
+    // la lectura vieja (anterior a la subida) llega tarde con un valor viejo: no debe pisar el nuevo
+    await act(async () => release(limitsOk({ uploadsRemaining: 7 })));
+    expect(
+      within(await sidebar()).getByText('6 of 10 uploads left this month')
+    ).toBeInTheDocument();
+    expect(within(await sidebar()).queryByText('7 of 10 uploads left this month')).toBeNull();
   });
 });

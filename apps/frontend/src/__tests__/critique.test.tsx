@@ -13,10 +13,13 @@ describe('Critique (3A)', () => {
     expect(screen.getByRole('heading', { name: 'AI Critique' })).toBeInTheDocument();
   });
 
-  it('la fecha cerca de medianoche no depende de la zona horaria', async () => {
-    open({ timestamp: '2026-09-24T23:59:59.000Z' });
-    expect(await screen.findByText('Sep 24, 2026')).toBeInTheDocument();
-  });
+  it.each(['2026-09-24T00:00:30.000Z', '2026-09-24T23:59:30.000Z'])(
+    'la fecha de %s es la del día UTC, no la de la zona local',
+    async (timestamp) => {
+      open({ timestamp });
+      expect(await screen.findByText('Sep 24, 2026')).toBeInTheDocument();
+    }
+  );
 
   it('las 5 categorías salen en orden de categoryId con nombre en mayúsculas, feedback y badge', async () => {
     const shuffled = [CATEGORIES[2], CATEGORIES[4], CATEGORIES[0], CATEGORIES[3], CATEGORIES[1]];

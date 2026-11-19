@@ -46,6 +46,15 @@ describe('Recent uploads', () => {
     });
   });
 
+  it.each([
+    ['2026-09-24T00:00:30.000Z', 'Sep 24, 2026'],
+    ['2026-09-24T23:59:30.000Z', 'Sep 24, 2026'],
+  ])('la fecha de %s es la del día UTC', async (timestamp, text) => {
+    setupApp('/upload', { 'GET /api/uploads': () => listOk([listItem(1, { timestamp })]) });
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(rows()[0]).toHaveTextContent(text);
+  });
+
   it('lista vacía: «No uploads yet»', async () => {
     setupApp('/upload', { 'GET /api/uploads': () => listOk([]) });
     expect(await screen.findByText('No uploads yet')).toBeInTheDocument();

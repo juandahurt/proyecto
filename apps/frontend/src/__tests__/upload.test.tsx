@@ -7,13 +7,16 @@ import {
   countOf,
   currentPath,
   dropOn,
+  expectFileNameAbsent,
+  fileInput,
   jsonResponse,
   makeFile,
   setupApp,
   zone,
 } from './helpers';
 
-const SECRET_NAME = 'mi-dibujo-secreto-7f3a.jpg';
+const SECRET_STEM = 'mi-dibujo-secreto-7f3a';
+const SECRET_NAME = `${SECRET_STEM}.jpg`;
 
 describe('Upload (2A): durante la petición', () => {
   it('la zona se sustituye por un indicador role=status, no hay segundo envío y la barra sigue operable', async () => {
@@ -110,28 +113,65 @@ describe('Upload (2A): errores del servidor', () => {
   });
 });
 
-describe('Upload: el nombre del archivo del usuario no se muestra ni se guarda', () => {
-  it('ni en el DOM, ni en la URL, ni en localStorage, ni en el FormData enviado', async () => {
+describe('Upload: el nombre del archivo del usuario no sale del File (todos los estados terminales)', () => {
+  const rejected: Array<[string, File[], string]> = [
+    ['tipo no permitido', [makeFile('image/gif', 100, `${SECRET_STEM}.gif`)], 'Only JPEG'],
+    [
+      'tamaño excedido',
+      [makeFile('image/jpeg', 10 * 1024 * 1024 + 1, SECRET_NAME)],
+      'File too large',
+    ],
+    [
+      'dos archivos',
+      [
+        makeFile('image/jpeg', 100, SECRET_NAME),
+        makeFile('image/png', 100, `${SECRET_STEM}-2.png`),
+      ],
+      'one image at a time',
+    ],
+  ];
+
+  it('éxito: ni en la ubicación completa, ni en el DOM, ni en el almacenamiento, ni en el FormData', async () => {
     const { f } = setupApp('/upload', { 'POST /api/uploads': () => acceptedOk() });
     await screen.findByRole('group', { name: 'Drop zone for your drawing' });
     dropOn(zone(), [makeFile('image/jpeg', 100, SECRET_NAME)]);
     await waitFor(() => expect(currentPath()).toBe(`/uploads/${UPLOAD_ID}`));
-    expect(document.body.innerHTML).not.toContain(SECRET_NAME);
-    expect(currentPath()).not.toContain('secreto');
-    expect(window.location.href).not.toContain('secreto');
-    expect(JSON.stringify({ ...window.localStorage })).not.toContain('secreto');
+    await screen.findByText('Sep 24, 2026');
+    expectFileNameAbsent(SECRET_STEM);
     const call = f.calls().find((c) => c.key === 'POST /api/uploads')!;
-    const sent = (call.init.body as FormData).get('file') as File;
-    expect(sent.name).not.toContain('secreto');
+    expect(((call.init.body as FormData).get('file') as File).name).not.toContain(SECRET_STEM);
   });
 
-  it('tampoco al rechazar el archivo en el cliente', async () => {
-    setupApp('/upload');
+  it.each(rejected)('rechazo del cliente (%s)', async (_n, files, text) => {
+    const { f } = setupApp('/upload');
     await screen.findByRole('group', { name: 'Drop zone for your drawing' });
-    dropOn(zone(), [makeFile('image/gif', 100, SECRET_NAME)]);
-    await screen.findByRole('alert');
-    expect(document.body.innerHTML).not.toContain(SECRET_NAME);
-    expect(JSON.stringify({ ...window.localStorage })).not.toContain('secreto');
+    dropOn(zone(), files);
+    expect(await screen.findByRole('alert')).toHaveTextContent(text);
+    expectFileNameAbsent(SECRET_STEM);
+    expect(countOf(f, 'POST /api/uploads')).toBe(0);
+  });
+
+  it('el helper detecta el nombre en el DOM y en el almacenamiento (el helper no es decorativo)', () => {
+    document.body.innerHTML = `<p>${SECRET_STEM}</p>`;
+    expect(() => expectFileNameAbsent(SECRET_STEM)).toThrow();
+    document.body.innerHTML = '';
+    window.sessionStorage.setItem('x', SECRET_STEM);
+    expect(() => expectFileNameAbsent(SECRET_STEM)).toThrow();
+    window.sessionStorage.clear();
+  });
+});
+
+describe('Upload: segundo envío con la petición en vuelo', () => {
+  it('dos selecciones síncronas dentro de un solo act() sobre el input real producen un solo POST', async () => {
+    const pending = new Promise<ReturnType<typeof acceptedOk>>(() => undefined);
+    const { f } = setupApp('/upload', { 'POST /api/uploads': () => pending as never });
+    await screen.findByRole('group', { name: 'Drop zone for your drawing' });
+    const input = fileInput();
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [makeFile('image/jpeg', 100, 'a.jpg')] } });
+      fireEvent.change(input, { target: { files: [makeFile('image/png', 100, 'b.png')] } });
+    });
+    expect(countOf(f, 'POST /api/uploads')).toBe(1);
   });
 });
 
