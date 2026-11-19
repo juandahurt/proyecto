@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import App from '../App';
 
@@ -67,6 +67,131 @@ export function installFetch(routes: Record<string, Handler>): FakeFetch {
   };
 }
 
+export const UPLOAD_ID = '3f2b1c4e-5a6d-4e8f-9a0b-1c2d3e4f5a6b';
+
+export const CATEGORIES = [
+  {
+    categoryId: 'CAT-1',
+    categoryName: 'Composition',
+    score: 72,
+    feedback: 'Your focal point is well-placed.',
+  },
+  {
+    categoryId: 'CAT-2',
+    categoryName: 'Proportions',
+    score: 58,
+    feedback: 'The torso appears compressed.',
+  },
+  {
+    categoryId: 'CAT-3',
+    categoryName: 'Line Quality',
+    score: 81,
+    feedback: 'Confident strokes overall.',
+  },
+  {
+    categoryId: 'CAT-4',
+    categoryName: 'Values (Shading)',
+    score: 64,
+    feedback: 'Value range is narrow.',
+  },
+  {
+    categoryId: 'CAT-5',
+    categoryName: 'Perspective',
+    score: 77,
+    feedback: 'The chair legs converge too quickly.',
+  },
+];
+
+export const THUMBNAIL = `/api/uploads/${UPLOAD_ID}/thumbnail?exp=1790000000&sig=abc123`;
+
+export function limitsData(over: Record<string, unknown> = {}) {
+  return {
+    tier: 'free',
+    uploadsRemaining: 7,
+    uploadsLimit: 10,
+    resetDate: '2026-10-01',
+    ...over,
+  };
+}
+
+export function limitsOk(over: Record<string, unknown> = {}) {
+  return jsonResponse(200, { data: limitsData(over), error: null, status: 200 });
+}
+
+export function detailOk(over: Record<string, unknown> = {}) {
+  return jsonResponse(200, {
+    data: {
+      uploadId: UPLOAD_ID,
+      status: 'ready',
+      confidence: 'HIGH',
+      categories: CATEGORIES,
+      timestamp: '2026-09-24T15:30:00.000Z',
+      thumbnailUrl: THUMBNAIL,
+      ...over,
+    },
+    error: null,
+    status: 200,
+  });
+}
+
+export function acceptedOk(over: Record<string, unknown> = {}) {
+  return jsonResponse(202, {
+    data: {
+      uploadId: UPLOAD_ID,
+      status: 'ready',
+      confidence: 'HIGH',
+      categories: CATEGORIES,
+      ...over,
+    },
+    error: null,
+    status: 202,
+  });
+}
+
+export function uuidN(n: number): string {
+  return `3f2b1c4e-5a6d-4e8f-9a0b-${String(n).padStart(12, '0')}`;
+}
+
+export function listItem(n: number, over: Record<string, unknown> = {}) {
+  return {
+    uploadId: uuidN(n),
+    status: 'ready',
+    confidence: 'HIGH',
+    timestamp: `2026-09-${String(10 + n).padStart(2, '0')}T10:00:00.000Z`,
+    scores: [],
+    ...over,
+  };
+}
+
+export function listOk(items: unknown[]) {
+  return jsonResponse(200, { data: { items }, error: null, status: 200 });
+}
+
+export function makeFile(type: string, bytes = 100, name = 'photo.jpg'): File {
+  return new File([new Uint8Array(bytes)], name, { type });
+}
+
+export const MIB = 1024 * 1024;
+
+/** Siembra una sesión y pinta la app con las lecturas habituales; `routes` pisa cualquiera. */
+export function setupApp(path: string, routes: Record<string, Handler> = {}) {
+  const token = fakeJwt();
+  window.localStorage.setItem(TOKEN_KEY, token);
+  const f = installFetch({
+    'GET /api/onboarding': () => onboardingState(true),
+    'GET /api/users/me/limits': () => limitsOk(),
+    'GET /api/uploads': () => listOk([]),
+    [`GET /api/uploads/${UPLOAD_ID}`]: () => detailOk(),
+    ...routes,
+  });
+  const view = renderApp(path);
+  return { f, token, view };
+}
+
+export function countOf(f: FakeFetch, key: string): number {
+  return f.calls().filter((c) => c.key === key).length;
+}
+
 function LocationProbe() {
   const loc = useLocation();
   return <div data-testid="location">{loc.pathname}</div>;
@@ -99,3 +224,10 @@ beforeEach(() => {
 afterEach(() => {
   jest.restoreAllMocks();
 });
+
+export const zone = () => screen.getByRole('group', { name: 'Drop zone for your drawing' });
+export const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
+
+export function dropOn(target: Element, files: File[]) {
+  fireEvent.drop(target, { dataTransfer: { files, types: ['Files'] } });
+}

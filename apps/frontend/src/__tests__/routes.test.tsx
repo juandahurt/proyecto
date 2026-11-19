@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   TOKEN_KEY,
+  UPLOAD_ID,
   currentPath,
   fakeJwt,
   headersOf,
@@ -14,15 +15,20 @@ import {
 const seed = () => window.localStorage.setItem(TOKEN_KEY, fakeJwt());
 
 describe('routes y guard', () => {
-  it.each(['/upload', '/onboarding', '/', '/history', '/settings'])(
-    'sin token %s redirige a /login sin llamar a ninguna API',
-    async (path) => {
-      const f = installFetch({});
-      renderApp(path);
-      await waitFor(() => expect(currentPath()).toBe('/login'));
-      expect(f.count()).toBe(0);
-    }
-  );
+  it.each([
+    '/upload',
+    '/onboarding',
+    '/',
+    '/history',
+    '/settings',
+    `/uploads/${UPLOAD_ID}`,
+    '/upgrade',
+  ])('sin token %s redirige a /login sin llamar a ninguna API', async (path) => {
+    const f = installFetch({});
+    renderApp(path);
+    await waitFor(() => expect(currentPath()).toBe('/login'));
+    expect(f.count()).toBe(0);
+  });
 
   it('con token y completed:false, ir a /upload termina en /onboarding', async () => {
     seed();
@@ -177,5 +183,53 @@ describe('routes y guard', () => {
     await waitFor(() => expect(currentPath()).toBe('/login'));
     expect(f.count()).toBe(0);
     spy.mockRestore();
+  });
+});
+
+describe('routes nuevas (u0-T02)', () => {
+  it.each([`/uploads/${UPLOAD_ID}`, '/upgrade'])(
+    'con token y onboarding incompleto, %s redirige a /onboarding',
+    async (path) => {
+      seed();
+      installFetch({ 'GET /api/onboarding': () => onboardingState(false) });
+      renderApp(path);
+      await waitFor(() => expect(currentPath()).toBe('/onboarding'));
+    }
+  );
+
+  it('/upgrade con onboarding completo muestra un h1 y «Coming soon.» dentro de AppLayout', async () => {
+    seed();
+    installFetch({
+      'GET /api/onboarding': () => onboardingState(true),
+      'GET /api/users/me/limits': () => jsonResponse(500, {}),
+    });
+    renderApp('/upgrade');
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByText('Coming soon.')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+  });
+
+  it('/uploads/<uuid> con onboarding completo se pinta dentro de AppLayout', async () => {
+    seed();
+    installFetch({
+      'GET /api/onboarding': () => onboardingState(true),
+      'GET /api/users/me/limits': () => jsonResponse(500, {}),
+      [`GET /api/uploads/${UPLOAD_ID}`]: () => jsonResponse(404, {}),
+    });
+    renderApp(`/uploads/${UPLOAD_ID}`);
+    expect(await screen.findByText("We couldn't find that critique.")).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+  });
+
+  it('un uploadId que no es UUID cae en la pantalla de la crítica, no en el 404 global', async () => {
+    seed();
+    installFetch({
+      'GET /api/onboarding': () => onboardingState(true),
+      'GET /api/users/me/limits': () => jsonResponse(500, {}),
+    });
+    renderApp('/uploads/no-es-uuid');
+    expect(await screen.findByText("We couldn't find that critique.")).toBeInTheDocument();
+    expect(screen.queryByText('Page not found')).toBeNull();
   });
 });

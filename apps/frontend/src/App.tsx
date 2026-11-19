@@ -9,11 +9,13 @@ import {
 } from './auth/guards';
 import { AppLayout } from './components/AppLayout';
 import History from './pages/History';
+import Critique from './pages/Critique';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import Onboarding from './pages/Onboarding';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
+import Upgrade from './pages/Upgrade';
 import Upload from './pages/Upload';
 
 function Root() {
@@ -37,6 +39,8 @@ export default function App() {
           <Route element={<RequireOnboarded />}>
             <Route element={<AppLayout />}>
               <Route path="/upload" element={<Upload />} />
+              <Route path="/uploads/:uploadId" element={<Critique />} />
+              <Route path="/upgrade" element={<Upgrade />} />
               <Route path="/history" element={<History />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
