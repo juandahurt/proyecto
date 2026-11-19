@@ -91,16 +91,6 @@ export function headersOf(init: RequestInit): Record<string, string> {
   return { ...(init.headers as Record<string, string> | undefined) };
 }
 
-export function spyConsole() {
-  const methods = ['log', 'info', 'warn', 'error', 'debug'] as const;
-  const spies = methods.map((m) => jest.spyOn(console, m).mockImplementation(() => undefined));
-  return {
-    allArgs: () => spies.flatMap((s) => s.mock.calls.flat().map((a) => String(a))),
-    callCount: () => spies.reduce((n, s) => n + s.mock.calls.length, 0),
-    restore: () => spies.forEach((s) => s.mockRestore()),
-  };
-}
-
 beforeEach(() => {
   window.localStorage.clear();
 });

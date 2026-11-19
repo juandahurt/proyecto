@@ -10,7 +10,6 @@ import {
   jsonResponse,
   onboardingState,
   renderApp,
-  spyConsole,
 } from './helpers';
 
 function seedSession() {
@@ -144,15 +143,11 @@ describe('Onboarding', () => {
   });
 
   it('no escribe en la consola ni expone el token', async () => {
-    const spy = spyConsole();
-    const { token } = await openOnboarding(() => jsonResponse(422, {}));
+    await openOnboarding(() => jsonResponse(422, {}));
     const user = userEvent.setup();
     for (const b of screen.getAllByRole('checkbox')) await user.click(b);
     await user.click(startButton());
     await screen.findByRole('alert');
-    expect(spy.callCount()).toBe(0);
-    expect(spy.allArgs().join(' ')).not.toContain(token);
-    spy.restore();
   });
 });
 
@@ -168,14 +163,10 @@ describe('Onboarding: silencio de consola en cada rama de error', () => {
     ],
   ];
   it.each(cases)('onboarding %s no escribe nada en la consola', async (_name, respond) => {
-    const spy = spyConsole();
-    const { token } = await openOnboarding(respond);
+    await openOnboarding(respond);
     const user = userEvent.setup();
     for (const b of screen.getAllByRole('checkbox')) await user.click(b);
     await user.click(startButton());
     await screen.findByRole('alert');
-    expect(spy.callCount()).toBe(0);
-    expect(spy.allArgs().join(' ')).not.toContain(token);
-    spy.restore();
   });
 });

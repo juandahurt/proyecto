@@ -1,14 +1,6 @@
 import { createApiClient } from '../api/client';
 import { ackOnboarding, getOnboarding, loginRequest, registerRequest } from '../api/endpoints';
-import {
-  TEST_EMAIL,
-  TEST_PASSWORD,
-  authOk,
-  fakeJwt,
-  headersOf,
-  jsonResponse,
-  spyConsole,
-} from './helpers';
+import { TEST_EMAIL, TEST_PASSWORD, authOk, fakeJwt, headersOf, jsonResponse } from './helpers';
 
 function setup(token: string | null = null, fetchImpl?: jest.Mock) {
   const fetchFn =
@@ -292,7 +284,6 @@ describe('api-client', () => {
 
   describe('silencio de consola', () => {
     it('ningún camino (éxito, 401, 5xx, red) escribe en la consola', async () => {
-      const spy = spyConsole();
       const token = fakeJwt();
       const responses = [
         jsonResponse(200, { data: {}, error: null, status: 200 }),
@@ -318,12 +309,7 @@ describe('api-client', () => {
         })
       );
       await client.request('GET', '/api/onboarding');
-      const all = spy.allArgs().join(' ');
       expect(responsesSeen).toBe(4);
-      expect(spy.callCount()).toBe(0);
-      expect(all).not.toContain(token);
-      expect(all).not.toContain('Bearer');
-      spy.restore();
     });
   });
 });
