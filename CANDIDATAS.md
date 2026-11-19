@@ -426,6 +426,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** subir la etapa de build a `node:22-slim` (con tag fijo) en una tarea propia, y revisar el resto de imágenes.
 
+### C-80 — Test intermitente en `trust-service`
+
+**Origen:** revisor de u0-T02 ronda 1 (CA-12). Dio 24/25 en la primera corrida y 25/25 en tres repeticiones, sin cambios de la rama en trust. No se guardó la salida de la corrida que falló.
+
+**Qué sería:** reproducir en bucle (`for i in 1..20`) guardando la salida del fallo, y arreglar el test o su dependencia de tiempo/orden.
+
+### C-81 — Exportar desde `shared-types` el límite de subida y los MIME aceptados
+
+**Origen:** revisor de u0-T02 ronda 1. El frontend repite `10 * 1024 * 1024` y el texto «10 MB» (lo pide la decisión 5 de u0-T02), y ingestion tiene su propio `MAX_UPLOAD_BYTES`; pueden desalinearse.
+
+**Qué sería:** `MAX_UPLOAD_BYTES` y `ACCEPTED_IMAGE_MIME_TYPES` en `packages/shared-types` y que ambos lados los importen. Cambia `shared-types` (reconstruir ingestion y frontend).
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
