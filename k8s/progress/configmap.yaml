@@ -9,3 +9,5 @@ data:
   NODE_ENV: 'production'
   INGESTION_URL: 'http://ingestion-service:3200'
   INGESTION_TIMEOUT_MS: '5000'
+  IDENTITY_URL: 'http://identity-service:3100'
+  IDENTITY_TIMEOUT_MS: '5000'
