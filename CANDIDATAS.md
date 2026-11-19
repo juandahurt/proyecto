@@ -228,7 +228,7 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** PVC por servicio (como `ingestion-blobs`) con `strategy: Recreate`, o aceptar explícitamente la pérdida. Decisión del humano.
 
-**Decisión del humano (ola 9, 2026-11-18):** PVC por servicio (identity y trust). Redactada como `tareas/u14-T01-pvc-identity-trust.md` (también despliega bcrypt 6 de identity); espera permisos de cluster del humano.
+**Decisión del humano (ola 9, 2026-11-18):** PVC por servicio (identity y trust). Resuelta por `tareas/u14-T01-pvc-identity-trust.md` (PR #22; también despliega bcrypt 6 de identity).
 
 ### C-44 — Sin tope al tamaño de la respuesta de ingestion en ProgressService
 
@@ -321,6 +321,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Origen:** revisor de u6-T01 ronda 2. Aun corregido, el grep no casaría con un `z.enum([` duplicado cuyos valores van en líneas siguientes (así está escrito el original en `trends.ts:10`). Defecto de la especificación, no de la rama.
 
 **Qué sería:** en la plantilla de tareas, usar `grep -Pzo` multilínea o `grep -rn "z.enum"` y revisar a mano.
+
+### C-60 — Ampliar C-48 (SIGTERM) a identity y trust, y hacer checkpoint de WAL al cerrar
+
+**Origen:** revisor de u14-T01 ronda 1. Medido: el pod viejo agota los 30 s de gracia en cada `Recreate` (identity y trust tampoco atienden SIGTERM), así que cada despliegue deja ~41 s de corte. Además SQLite nunca hace checkpoint al cerrar: `identity.db` y `trust.db` pesan 4096 B (solo cabecera) y todos los datos viven en el `-wal`. Un backup futuro que copie solo el `.db` perdería todo.
+
+**Qué sería:** manejar SIGTERM (cerrar servidor y base, con checkpoint) en identity y trust, junto con ingestion (C-48). Toca `apps/*/src`, por eso es tarea aparte.
+
+### C-61 — Plantillas de CA de infraestructura: puerto 3301, dry-run y aserciones
+
+**Origen:** revisor de u14-T01 ronda 1 (F-01 y F-03, amarillos de especificación). (F-01) El puerto local 3301 lo ocupa el backend local (`apps/backend`, PID 44123): sin port-forward, `curl localhost:3301/health` da 200 y un `trust-health=200` sería un falso verde. (F-03) El `--dry-run=client` de CA-2 no discrimina ninguna mutación y el `grep` no tiene aserción.
+
+**Qué sería:** elegir otro puerto local para trust (p. ej. 3302), o comprobar que el port-forward arrancó; y escribir los CA de manifiestos con aserciones (`grep -q … || echo FALLO`) y `--dry-run=server`. No es defecto del codificador.
+
+### C-62 — `reclaimPolicy: Delete` en la StorageClass `standard` afecta a tres PVC con datos
+
+**Origen:** revisor de u14-T01 ronda 1. Borrar `ingestion-blobs`, `identity-data` o `trust-data` borra los datos. Riesgo conocido y anotado en la tarea; no se cambió.
+
+**Qué sería:** aceptarlo para el MVP local o crear una StorageClass con `Retain`. Decisión del humano si el entorno se vuelve compartido.
 
 ## Cerradas
 
