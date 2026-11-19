@@ -354,6 +354,36 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** comparar sin distinguir mayúsculas, buscar cada segmento del JWT, espiar también `stderr`, añadir `expect(res.status)` por escenario y extraer un helper común de silencio de logs entre `history.test.ts` y `trends.test.ts`. Solo tests; no cambia la imagen.
 
+### C-68 — Pantalla de error de onboarding sin salida (cerrar sesión)
+
+**Origen:** revisor de u0-T01 ronda 1 (F-08, amarillo). Con token válido y trust en 5xx, la guarda solo ofrece Retry y ni `/login` ni `/register` dejan cerrar sesión.
+
+**Qué sería:** añadir «Log out» a la pantalla de error de la guarda, con su test. Se puede hacer en u0-T02 (que ya toca el cascarón).
+
+### C-69 — Proxy de desarrollo de Vite con puertos incrustados e incompleto
+
+**Origen:** revisor de u0-T01 ronda 1 (F-07, amarillo). `vite.config.ts` apunta a `localhost:31xx-34xx` y le faltan `/api/policy` y `/api/history`, que nginx sí enruta.
+
+**Qué sería:** derivar el proxy de dev de variables de entorno o quitarlo; incluir todas las rutas de nginx.
+
+### C-70 — Reproducibilidad del «rojo primero» del frontend y declaración de `collectCoverageFrom`
+
+**Origen:** revisor de u0-T01 ronda 1 (F-09, amarillo). Los cuerpos neutros nunca se commitearon, y `collectCoverageFrom` excluye `src/__tests__/**` sin que la tarea lo declare.
+
+**Qué sería:** commitear el rojo (commit aparte) en las próximas tareas de UI y declarar las exclusiones en la tarea; añadir tests de doble envío en registro y onboarding.
+
+### C-71 — Bundle del frontend de 741 kB, React Router 6.x con avisos moderate, nginx que resuelve upstreams al arrancar, sin rate limiting en login
+
+**Origen:** revisor y codificador de u0-T01 ronda 1. (a) `shared-types` se compila a CJS y arrastra Zod entero: subrutas o salida ESM. (b) Subir a React Router 7. (c) Si falta un Service, el pod del frontend no arranca. (d) identity no limita intentos de login.
+
+**Qué sería:** tareas propias cuando toque endurecer; ninguna bloquea el MVP.
+
+### C-72 — JWT en `localStorage` frente a cookie `HttpOnly`, y sin test E2E con navegador
+
+**Origen:** orquestador, decisión 3 de u0-T01. XSS puede leer el token; la mitigación actual es la CSP de nginx. Sin navegador automatizado, el DOM real no se prueba.
+
+**Qué sería:** decidir si el MVP acepta el riesgo; evaluar Playwright en una tarea de infraestructura de pruebas.
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
