@@ -384,6 +384,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** decidir si el MVP acepta el riesgo; evaluar Playwright en una tarea de infraestructura de pruebas.
 
+### C-73 — nginx: respuestas `400` de nivel servidor sin cabeceras de seguridad
+
+**Origen:** revisor de u0-T01 ronda 2. Rutas con `..` por encima de la raíz (`/assets/../../etc/passwd`) dan `400` sin CSP, X-Content-Type-Options ni X-Frame-Options, porque es una respuesta de nivel servidor.
+
+**Qué sería:** un `error_page 400` con un `location` que incluya `security-headers.inc`, o las cabeceras a nivel `server`. Sin impacto práctico (no hay contenido que proteger en un 400).
+
+### C-74 — nginx: un `416` de `Range` forjado lleva `Cache-Control: immutable`; restos de forma en la bitácora de u0-T01; literal suelto `Enter a valid email and password.`
+
+**Origen:** revisor de u0-T01 ronda 2 (F-12, F-13, F-14, amarillos). (a) `Range: bytes=999999999-` sobre un asset real da 416 con `immutable`; los navegadores no cachean un 416, riesgo nulo. (b) La sección de la ronda 1 de la bitácora conserva títulos duplicados o vacíos, comandos de CA-15 parafraseados y el `wc -l` antiguo de CA-11. (c) El mensaje genérico de `credentials.ts:31` no es una constante exportada.
+
+**Qué sería:** (a) acotar `immutable` a 200/206/304; (b) limpiar la bitácora; (c) exportar la constante. Todas triviales.
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
