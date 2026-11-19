@@ -6,6 +6,8 @@ metadata:
     app: trust-service
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: trust-service
@@ -52,4 +54,5 @@ spec:
               cpu: '500m'
       volumes:
         - name: data-volume
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: trust-data

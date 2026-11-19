@@ -6,6 +6,8 @@ metadata:
     app: identity-service
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: identity-service
@@ -16,7 +18,7 @@ spec:
     spec:
       containers:
         - name: identity-service
-          image: identity-service:u10-T01
+          image: identity-service:u14-T01
           imagePullPolicy: Never
           ports:
             - name: http
@@ -52,4 +54,5 @@ spec:
               cpu: '500m'
       volumes:
         - name: data-volume
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: identity-data
