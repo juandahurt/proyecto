@@ -143,6 +143,18 @@ describe('calculateTrends — mínimo de uploads calificados (FR-6.1, FR-6.5, AC
     expect(r.qualifiedCount).toBe(3);
     expect(r.status).toBe('insufficient_data');
   });
+  it.each(['HIGH', 'MEDIUM'] as const)(
+    'un item low_confidence con confianza %s y scores presentes no cuenta como calificado',
+    (confidence) => {
+      const raro: UploadListItem = { ...ready(99), status: 'low_confidence', confidence };
+      const r = cat1([raro, ...listing([10, 20, 30])]);
+      expect(r.qualifiedCount).toBe(3);
+      expect(r.status).toBe('insufficient_data');
+      expect(cat1([raro, ...listing([10, 20, 30, 40])]).series?.map((p) => p.score)).toEqual([
+        10, 20, 30, 40,
+      ]);
+    }
+  );
   it('confianza MEDIUM sí cuenta como calificada', () => {
     const items = [ready(40, { confidence: 'MEDIUM' }), ...listing([10, 20, 30])];
     expect(cat1(items).qualifiedCount).toBe(4);
@@ -206,18 +218,25 @@ describe('calculateTrends — categorías independientes, cinco siempre, orden y
     const r = [...calculateTrends(listing([1, 2, 3, 4, 5]), OPTS), ...calculateTrends([], OPTS)];
     for (const x of r) expect(CategoryTrendCalcSchema.safeParse(x).success).toBe(true);
   });
-  it('el esquema rechaza insufficient_data con slope y tendencia sin series', () => {
-    const base = { categoryId: 'CAT-1', qualifiedCount: 0, uploadsNeeded: 4 };
-    expect(
-      CategoryTrendCalcSchema.safeParse({ ...base, status: 'insufficient_data', slope: 1 }).success
-    ).toBe(false);
-    expect(CategoryTrendCalcSchema.safeParse({ ...base, status: 'improving' }).success).toBe(false);
+  it('el esquema exige slope y series juntos solo con tendencia', () => {
+    const base = { categoryId: 'CAT-1', qualifiedCount: 4, uploadsNeeded: 0 };
+    const series = calculateTrends(listing([1, 2, 3, 4]), OPTS)[0].series;
+    const ok = (v: object): boolean => CategoryTrendCalcSchema.safeParse({ ...base, ...v }).success;
+    expect(ok({ status: 'improving', slope: 1, series })).toBe(true);
+    expect(ok({ status: 'improving' })).toBe(false);
+    expect(ok({ status: 'improving', slope: 1 })).toBe(false);
+    expect(ok({ status: 'improving', series })).toBe(false);
+    expect(ok({ status: 'insufficient_data' })).toBe(true);
+    expect(ok({ status: 'insufficient_data', slope: 1 })).toBe(false);
+    expect(ok({ status: 'insufficient_data', series })).toBe(false);
+    expect(ok({ status: 'insufficient_data', slope: 1, series })).toBe(false);
   });
 });
 
 describe('calculateTrends — silencio de consola', () => {
-  it('no escribe en consola ni stdout, con tendencia ni con insufficient_data', () => {
-    const spies = [
+  let spies: jest.SpyInstance[];
+  beforeEach(() => {
+    spies = [
       jest.spyOn(console, 'log').mockImplementation(() => undefined),
       jest.spyOn(console, 'info').mockImplementation(() => undefined),
       jest.spyOn(console, 'warn').mockImplementation(() => undefined),
@@ -225,9 +244,14 @@ describe('calculateTrends — silencio de consola', () => {
       jest.spyOn(console, 'debug').mockImplementation(() => undefined),
       jest.spyOn(process.stdout, 'write').mockImplementation(() => true),
     ];
+  });
+  afterEach(() => {
+    spies.forEach((s) => s.mockRestore());
+  });
+
+  it('no escribe en consola ni stdout, con tendencia ni con insufficient_data', () => {
     calculateTrends(listing([1, 2, 3, 4]), OPTS);
     calculateTrends([], OPTS);
     for (const s of spies) expect(s).not.toHaveBeenCalled();
-    spies.forEach((s) => s.mockRestore());
   });
 });
