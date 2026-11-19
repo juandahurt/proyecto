@@ -355,6 +355,14 @@ Qué pruebas se escriben **en esta tarea** (Jest + React Testing Library + `user
 
 ---
 
+## Fix de especificación (pre-revisión, 2026-11-19)
+
+Error del orquestador detectado por el codificador (ver `bitacoras/u0-T02.md`, ATENCIÓN 3):
+
+- **CA-7, miniatura con cadena vacía:** pedí que `thumbnailUrl: ''` diera «sin `<img>` y la crítica sigue viva». `UploadDetailSchema` define `thumbnailUrl: z.string().min(1).optional()`, así que una respuesta con `''` **no cumple el schema** y, según CA-4, se trata como error del servidor. **Manda el schema:** con `''` la pantalla muestra `We could not load this critique. Please try again.` (CA-8) y no hay `<img>`. Se mantiene sin cambios: **sin** `thumbnailUrl` (ausente) no hay `<img>` y la crítica se pinta; con `https://…` o `javascript:` (cadenas no vacías que sí cumplen el schema) no hay `<img>` y la crítica se pinta. Cambiar el schema queda fuera de alcance. El test del codificador ya fija esto.
+- **ATENCIÓN 2 del codificador (lockfile):** `npm` resolvió `file-selector` 5.0.3 (publicada 2026-11-15, 4 días antes); el codificador dejó 5.0.2 (2026-10-31) editando `version`, `resolved` e `integrity` a mano. El `integrity` se comprobó contra el registro (`npm view file-selector@5.0.2 dist.integrity`) y coincide. **Aceptado.** El revisor no debe tratarlo como defecto salvo que `npm ci` falle.
+- **ATENCIÓN 1 del codificador (engines):** `react-dropzone`, `attr-accept` y `file-selector` declaran `engines.node >= 22` y el `Dockerfile` construye con `node:20-slim` (fuera de alcance). El build termina bien; se anota como candidata (C-79), no se resuelve aquí.
+
 ## Notas
 
 - **Archivos que se modifican en su sitio:** `apps/frontend/jest.setup.ts`, `src/__tests__/helpers.tsx` (se quita `spyConsole`), `src/api/client.ts`, `src/api/endpoints.ts` (o un `uploads.ts` nuevo para los endpoints de subida), `src/auth/guards.tsx`, `src/components/AppLayout.tsx`, `src/pages/Upload.tsx`, `src/App.tsx`, `k8s/frontend/deployment.yaml`, `package-lock.json` y `apps/frontend/package.json`. Todo lo demás es nuevo. Nada de duplicados con sufijo.

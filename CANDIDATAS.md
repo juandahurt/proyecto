@@ -420,6 +420,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** decidir si el listado incluye `thumbnailUrl` firmada (una firma por fila) y si se admite un título editable. Afecta también a u0-T03 (historial).
 
+### C-79 — Dependencias de `react-dropzone` exigen Node >= 22 y la imagen de build usa Node 20
+
+**Origen:** codificador de u0-T02 (ATENCIÓN 1). `react-dropzone`, `attr-accept` y `file-selector` declaran `engines.node >= 22`; `apps/frontend/Dockerfile` construye con `node:20-slim`. `docker build` y `vite build` terminan bien, pero npm puede avisar y una versión futura podría romper.
+
+**Qué sería:** subir la etapa de build a `node:22-slim` (con tag fijo) en una tarea propia, y revisar el resto de imágenes.
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
