@@ -420,10 +420,25 @@ describe('GET /api/trends', () => {
   });
 
   describe('silencio de logs (sin credenciales, ids ni datos de tendencia)', () => {
+    /** Scores reconocibles: no chocan con ids, timestamps ni otros numeros del cuerpo. */
+    const MARKED = [71, 83, 97];
+    function markedUploads(): Record<string, unknown>[] {
+      return [...MARKED, ...MARKED]
+        .map((score, i) => ({
+          uploadId: uid(i + 1),
+          status: 'ready',
+          confidence: 'HIGH',
+          timestamp: ts(i + 1),
+          scores: [{ categoryId: 'CAT-1', score }],
+        }))
+        .reverse();
+    }
+
     function expectSilentLogs(): void {
       const text = logged();
       for (const secret of [
         JWT,
+        AUTH,
         'Bearer',
         'bearer',
         USER_ID,
@@ -434,41 +449,123 @@ describe('GET /api/trends', () => {
       ]) {
         expect(text).not.toContain(secret);
       }
-      // los scores del historial (10..60) no aparecen como valores de datos
+      // ni la clave ni los valores de score del historial (71, 83, 97 y los 10..60 de sixUploads)
       expect(text).not.toContain('"score"');
+      for (const n of [...MARKED, 10, 20, 30, 40, 50, 60]) {
+        expect(text).not.toMatch(new RegExp(`(^|\\D)${n}(\\D|$)`));
+      }
     }
 
     it.each(['free', 'paid'])('camino feliz (%s): ningun log con datos', async (tier) => {
       idn.respond(200, limitsBody(tier));
-      ing.respond(200, listBody(sixUploads()));
+      ing.respond(200, listBody(markedUploads()));
       const res = await get();
       expect(res.status).toBe(200);
       expectSilentLogs();
     });
 
-    it('cada fallo de identity e ingestion registra solo un mensaje sin datos', async () => {
-      const scenarios: Array<() => Promise<void>> = [
-        async () => idn.respond(401, '{}'),
-        async () => idn.respond(500, '{}'),
-        async () => idn.respond(200, 'no json'),
-        async () => idn.respond(200, limitsBody('paid'), 300),
+    it('el camino feliz paid con scores reconocibles si devuelve esos valores (el fixture es util)', async () => {
+      idn.respond(200, limitsBody('paid'));
+      ing.respond(200, listBody(markedUploads()));
+      const res = await get();
+      expect(JSON.stringify(res.body)).toContain('97');
+    });
+
+    const failures: Array<[string, () => Promise<unknown>]> = [
+      [
+        'identity 401',
+        async () => {
+          idn.respond(401, '{}');
+          return get();
+        },
+      ],
+      [
+        'identity timeout',
+        async () => {
+          idn.respond(200, limitsBody('paid'), 300);
+          return get(app({ timeoutMs: 100 }));
+        },
+      ],
+      [
+        'identity 5xx',
+        async () => {
+          idn.respond(500, '{}');
+          return get();
+        },
+      ],
+      ['identity conexion rechazada', async () => get(app({ identityUrl: await closedPortUrl() }))],
+      [
+        'identity redireccion',
+        async () => {
+          idn.respond(302, '', 0, { Location: `${ing.url}/api/users/me/limits` });
+          return get();
+        },
+      ],
+      [
+        'identity cuerpo no JSON',
+        async () => {
+          idn.respond(200, 'no json');
+          return get();
+        },
+      ],
+      [
+        'identity cuerpo que no valida LimitsResponseSchema',
+        async () => {
+          idn.respond(200, JSON.stringify({ data: { tier: 'paid', uploadsRemaining: 'x' } }));
+          return get();
+        },
+      ],
+      [
+        'identity tier desconocido',
+        async () => {
+          idn.respond(200, limitsBody('enterprise'));
+          return get();
+        },
+      ],
+      [
+        'ingestion 401',
+        async () => {
+          idn.respond(200, limitsBody('paid'));
+          ing.respond(401, '{}');
+          return get();
+        },
+      ],
+      [
+        'ingestion 5xx',
         async () => {
           idn.respond(200, limitsBody('paid'));
           ing.respond(503, '{}');
+          return get();
         },
+      ],
+      [
+        'ingestion red (conexion rechazada)',
+        async () => {
+          idn.respond(200, limitsBody('paid'));
+          return get(app({ ingestionUrl: await closedPortUrl() }));
+        },
+      ],
+      [
+        'ingestion timeout',
+        async () => {
+          idn.respond(200, limitsBody('paid'));
+          ing.respond(200, listBody(markedUploads()), 600);
+          return get(app({ timeoutMs: 100 }));
+        },
+      ],
+      [
+        'ingestion cuerpo invalido',
         async () => {
           idn.respond(200, limitsBody('paid'));
           ing.respond(200, 'no json');
+          return get();
         },
-      ];
-      for (const setup of scenarios) {
-        await setup();
-        await request(app({ timeoutMs: 100 }))
-          .get('/api/trends')
-          .set('Authorization', AUTH);
-      }
+      ],
+    ];
+
+    it.each(failures)('fallo %s: ningun log con credenciales ni datos', async (_name, run) => {
+      await run();
       expectSilentLogs();
-      expect(logged()).toContain('[trends]');
     });
   });
 });
