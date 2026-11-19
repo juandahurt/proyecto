@@ -378,6 +378,10 @@ Hallazgos de la ronda 1 (`revisiones/u0-T02/ronda-1.md`, NO-VERDE) y mi arbitraj
 - **F-04 (AMARILLO, sin cambio de código):** las regiones `aria-live` que aparecen ya con texto pueden no anunciarse en algunos lectores de pantalla; jsdom no lo puede probar. Se anota en el PR para la comprobación visual del humano.
 - **CA-2** pasa a **16** mutaciones (las 14 más M05 y M06) y CA-12 cuenta los tests nuevos. Fuera de la ronda 2: C-80 (test intermitente de trust) y C-81 (exportar `MAX_UPLOAD_BYTES` desde `shared-types`).
 
+### Fix de especificación (post-ronda 2, 2026-11-19)
+
+- **F-02, segundo envío (error del orquestador):** pedí «dos eventos de selección síncronos dentro de un solo `act()`». `react-dropzone` 20.x **aborta la lectura anterior** cuando llega otra sin esperar, así que dos selecciones realmente síncronas nunca llegan a `onFile` dos veces: el criterio era imposible al pie de la letra. **Se acepta la solución del codificador:** soltar el primer archivo, esperar ~20 ms **sin que React repinte** y soltar el segundo, todo dentro de un solo `act()`, de modo que se ejercite el guard `busy` y no el desmontaje de la zona. La mutación P04 (quitar el guard) **debe seguir haciendo fallar** el test. El revisor no lo trata como defecto.
+
 ## Notas
 
 - **Archivos que se modifican en su sitio:** `apps/frontend/jest.setup.ts`, `src/__tests__/helpers.tsx` (se quita `spyConsole`), `src/api/client.ts`, `src/api/endpoints.ts` (o un `uploads.ts` nuevo para los endpoints de subida), `src/auth/guards.tsx`, `src/components/AppLayout.tsx`, `src/pages/Upload.tsx`, `src/App.tsx`, `k8s/frontend/deployment.yaml`, `package-lock.json` y `apps/frontend/package.json`. Todo lo demás es nuevo. Nada de duplicados con sufijo.
