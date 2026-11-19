@@ -310,6 +310,18 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** añadir `Test Suites:` a los grep de los CA y hacer `npm ci` en el árbol principal. Lo segundo lo decide el humano (es su árbol).
 
+### C-58 — Endurecer los tests de u6-T01 (amarillos F-07 y F-08 de la ronda 2)
+
+**Origen:** revisor de u6-T01 ronda 2. (F-07) La lista cerrada de headers de `trend-service.test.ts` comprueba nombres, no valores: sobrescribir `user-agent`, `accept` o `accept-language` sobrevive. Los valores son idénticos en Node 20 y 26, así que se pueden afirmar por valor. (F-08) Ningún test protege el dominio 0..100 entero de `TrendPointSchema.score`: cambiarlo por `z.number()` sobrevive.
+
+**Qué sería:** afirmar esos headers por valor y añadir un `safeParse` de -1, 101, 1.5 y "5" sobre `TrendPointSchema`. Solo tests; no cambia comportamiento.
+
+### C-59 — El grep de CA-1 es por línea y no ve enums de varias líneas
+
+**Origen:** revisor de u6-T01 ronda 2. Aun corregido, el grep no casaría con un `z.enum([` duplicado cuyos valores van en líneas siguientes (así está escrito el original en `trends.ts:10`). Defecto de la especificación, no de la rama.
+
+**Qué sería:** en la plantilla de tareas, usar `grep -Pzo` multilínea o `grep -rn "z.enum"` y revisar a mano.
+
 ## Cerradas
 
 ### C-41 — `uploads.timestamp` con resolución de segundos
