@@ -82,9 +82,28 @@ describe('getTrends', () => {
     expect(fake.requests).toHaveLength(1);
     const h = fake.requests[0].headers;
     expect(h.authorization).toBe(auth);
-    expect(
-      Object.keys(h).filter((k) => !['host', 'connection', 'authorization'].includes(k))
-    ).toEqual(expect.not.arrayContaining(['cookie', 'x-forwarded-for', 'x-user-id']));
+    // Ningún header del cliente más allá de Authorization: uno por uno, por valor.
+    for (const name of [
+      'cookie',
+      'x-forwarded-for',
+      'x-user-id',
+      'x-forwarded-host',
+      'forwarded',
+    ]) {
+      expect(h[name]).toBeUndefined();
+    }
+    // Todo header distinto de authorization debe ser de los que pone el propio fetch (allowlist cerrada).
+    const propios = new Set([
+      'host',
+      'connection',
+      'authorization',
+      'accept',
+      'accept-language',
+      'accept-encoding',
+      'sec-fetch-mode',
+      'user-agent',
+    ]);
+    expect(Object.keys(h).filter((k) => !propios.has(k))).toEqual([]);
     expect(fake.requests[0].url).toBe('/api/uploads');
   });
 
