@@ -354,6 +354,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** `.strict()` en `CategoryTrendSchema` y `TrendResponseSchema` y comprobar `categoryName === CATEGORY_NAME_BY_ID[categoryId]` en el `refine`. Cambia `shared-types`, así que exige imagen nueva y redespliegue de progress-service: va en una tarea propia o junto al frontend.
 
+### C-67 — Endurecer el espía de logs de `trends.test.ts` y compartirlo con `history.test.ts`
+
+**Origen:** revisor de u7-T01 ronda 2 (F-05 y F-06, amarillos). `expectSilentLogs` distingue mayúsculas en las direcciones (`IMPROVING` sobrevive), busca solo el JWT completo (los segmentos del payload o la firma sobreviven), no espía `process.stderr.write`, no comprueba `slope`, y los escenarios de `it.each(failures)` no afirman el status.
+
+**Qué sería:** comparar sin distinguir mayúsculas, buscar cada segmento del JWT, espiar también `stderr`, añadir `expect(res.status)` por escenario y extraer un helper común de silencio de logs entre `history.test.ts` y `trends.test.ts`. Solo tests; no cambia la imagen.
+
 ## Cerradas
 
 ### C-41 — `uploads.timestamp` con resolución de segundos
