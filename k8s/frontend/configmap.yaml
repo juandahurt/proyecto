@@ -58,6 +58,14 @@ data:
         include /etc/nginx/conf.d/proxy-common.inc;
       }
 
+      # /api sin barra final tampoco es la SPA.
+      location = /api {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        include /etc/nginx/conf.d/security-headers.inc;
+        return 404 '{"data":null,"error":"Not found","status":404}';
+      }
+
       # Cualquier otra ruta /api/ es un 404 JSON, nunca el index.html de la SPA.
       location /api/ {
         default_type application/json;
@@ -69,7 +77,8 @@ data:
       # Assets con hash de Vite: cacheables.
       location /assets/ {
         try_files $uri =404;
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        # Sin `always`: nginx solo lo anade a respuestas 2xx/3xx, nunca a un 404 de hash ausente.
+        add_header Cache-Control "public, max-age=31536000, immutable";
         include /etc/nginx/conf.d/security-headers.inc;
       }
 
