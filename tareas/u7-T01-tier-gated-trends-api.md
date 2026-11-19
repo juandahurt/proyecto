@@ -202,29 +202,29 @@ Cada uno con **su comando**. El revisor los va a correr él mismo, uno por uno. 
   kubectl get deployment progress-service -o jsonpath='{.spec.template.spec.containers[0].image} {.spec.strategy.type}{"\n"}'
   kubectl get pods -l app=progress-service -o jsonpath='{range .items[*]}{.metadata.name} ready={.status.containerStatuses[0].ready} restarts={.status.containerStatuses[0].restartCount} image={.spec.containers[0].image}{"\n"}{end}'
   kubectl get configmap progress-service-config -o jsonpath='{.data.IDENTITY_URL} {.data.IDENTITY_TIMEOUT_MS}{"\n"}'
-  lsof -i :3401 || echo "3401 libre"
-  kubectl port-forward svc/progress-service 3401:3400 >$WORK/pf-progress.log 2>&1 &
-  sleep 3; curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3401/health
-  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3401/api/trends
-  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3401/api/trends -H "Authorization: Bearer basura"
+  lsof -i :3402 || echo "3402 libre"
+  kubectl port-forward svc/progress-service 3402:3400 >$WORK/pf-progress.log 2>&1 &
+  sleep 3; curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3402/health
+  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3402/api/trends
+  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3402/api/trends -H "Authorization: Bearer basura"
   kubectl get pods -o wide | awk '{print $1,$2,$3,$4,$5}' | tee $WORK/pods-despues.txt
   ```
 
-  Esperado: imagen `progress-service:u7-T01 RollingUpdate`; un solo pod de progress, `ready=true restarts=0` con `image=progress-service:u7-T01` y **nombre distinto** del anterior (anótalo en la bitácora); el ConfigMap trae `http://identity-service:3100 5000`; el puerto 3401 estaba libre (L45: si lo ocupa otro proceso el `curl` da un falso verde; confirma que el port-forward arrancó mirando `$WORK/pf-progress.log`); `/health` `200`; `/api/trends` sin token `401` y con token basura `401`. **Identity, ingestion, trust y backend con el mismo nombre de pod y la misma edad** en `pods-antes.txt` y `pods-despues.txt` (no se tocan). Cierra el port-forward al terminar. El **solo** `kubectl apply` permitido es `-f k8s/progress/`. Registra en la bitácora cada `docker build`, `kind load`, `apply` y `rollout` con su salida.
+  Esperado: imagen `progress-service:u7-T01 RollingUpdate`; un solo pod de progress, `ready=true restarts=0` con `image=progress-service:u7-T01` y **nombre distinto** del anterior (anótalo en la bitácora); el ConfigMap trae `http://identity-service:3100 5000`; el puerto 3402 estaba libre (L45: si lo ocupa otro proceso el `curl` da un falso verde; confirma que el port-forward arrancó mirando `$WORK/pf-progress.log`); `/health` `200`; `/api/trends` sin token `401` y con token basura `401`. **Identity, ingestion, trust y backend con el mismo nombre de pod y la misma edad** en `pods-antes.txt` y `pods-despues.txt` (no se tocan). Cierra el port-forward al terminar. El **solo** `kubectl apply` permitido es `-f k8s/progress/`. Registra en la bitácora cada `docker build`, `kind load`, `apply` y `rollout` con su salida.
 
 - [ ] **CA-16** — E2E con usuarios reales (**CA-16b, revisor o humano; solo con autorización de port-forward a identity, ingestion y progress y de registro de usuarios `*.test`**). Si el sistema deniega un permiso, se reporta **no verificable** y no se esquiva (L22).
 
   ```bash
-  # Puertos locales: identity 3101, ingestion 3202, progress 3401 (comprueba `lsof -i :<puerto>` antes, L45; 3300 es del humano y 3301 lo ocupa el backend local).
+  # Puertos locales: identity 3101, ingestion 3202, progress 3402 (comprueba `lsof -i :<puerto>` antes, L45; 3300 es del humano y 3301 lo ocupa el backend local).
   # Registrar con emails únicos *.test: A (free, 5 uploads), B (free, 1 upload). Subir JPEG como en bitacoras/u5-T02.md. NO imprimas los JWT.
-  curl -s -w " %{http_code}\n" http://localhost:3401/api/trends -H "Authorization: Bearer $JWT_A" | tee $WORK/trends-A-free.txt
+  curl -s -w " %{http_code}\n" http://localhost:3402/api/trends -H "Authorization: Bearer $JWT_A" | tee $WORK/trends-A-free.txt
   node -e 'const t=require("fs").readFileSync(process.argv[1],"utf8").replace(/ \d+\n?$/,"");const j=JSON.parse(t);const c=j.data.categories;const raw=JSON.stringify(j);const ok=j.data.tier==="free"&&c.length===5&&c.every(x=>(x.status==="locked"||x.status==="insufficient_data")&&!("trend" in x))&&!/improving|stagnating|worsening|scoreHistory|slope/.test(raw);console.log("A free:",ok?"locked sin datos":"FALLO");process.exit(ok?0:1)' $WORK/trends-A-free.txt
   curl -s -X POST http://localhost:3101/api/users/me/subscribe -H "Authorization: Bearer $JWT_A" -o /dev/null -w "%{http_code}\n"
-  curl -s -w " %{http_code}\n" http://localhost:3401/api/trends -H "Authorization: Bearer $JWT_A" | tee $WORK/trends-A-paid.txt
+  curl -s -w " %{http_code}\n" http://localhost:3402/api/trends -H "Authorization: Bearer $JWT_A" | tee $WORK/trends-A-paid.txt
   node -e 'const t=require("fs").readFileSync(process.argv[1],"utf8").replace(/ \d+\n?$/,"");const j=JSON.parse(t);const c=j.data.categories;const withTrend=c.filter(x=>x.trend);const ok=j.data.tier==="paid"&&c.length===5&&withTrend.length>=1&&withTrend.every(x=>x.trend.direction===x.status&&x.trend.scoreHistory.length>=4)&&c.every(x=>x.status!=="locked");console.log("A paid:",ok?"trend completo":"FALLO","categorias con tendencia="+withTrend.length);process.exit(ok?0:1)' $WORK/trends-A-paid.txt
-  curl -s -w " %{http_code}\n" http://localhost:3401/api/trends -H "Authorization: Bearer $JWT_B" | tee $WORK/trends-B.txt
+  curl -s -w " %{http_code}\n" http://localhost:3402/api/trends -H "Authorization: Bearer $JWT_B" | tee $WORK/trends-B.txt
   node -e 'const t=require("fs").readFileSync(process.argv[1],"utf8").replace(/ \d+\n?$/,"");const j=JSON.parse(t);const ok=j.data.tier==="free"&&j.data.categories.every(x=>x.status==="insufficient_data"&&x.uploadsNeeded===3&&!("trend" in x));console.log("B:",ok?"insufficient_data uploadsNeeded=3":"FALLO");process.exit(ok?0:1)' $WORK/trends-B.txt
-  curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:3401/api/trends?userId=ID_DE_A" -H "Authorization: Bearer $JWT_B"
+  curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:3402/api/trends?userId=ID_DE_A" -H "Authorization: Bearer $JWT_B"
   ```
 
   Esperado: `A free: locked sin datos`; `POST /subscribe` `200`; `A paid: trend completo` con al menos una categoría con tendencia (el stub de Claude siempre devuelve `HIGH`, así que A tiene 5 uploads calificados) y `scoreHistory` de ≥ 4 puntos; `B: insufficient_data uploadsNeeded=3`; el último `curl` da `200` y la respuesta es la de B (el `?userId=` se ignora). La puerta se prueba con un **cambio real de tier en identity** (el mismo usuario, antes y después de `subscribe`), no con un falso. Cierra los port-forward (el PID 4456 es del humano: no lo toques).
@@ -264,6 +264,10 @@ Qué pruebas se escriben **en esta tarea**, no después:
 
 ---
 
+## Fix de especificación (antes del despacho, 2026-11-19)
+
+Error del orquestador: la tarea fijaba el puerto local **3401** para el port-forward de progress, pero lo ocupa un `node dist/index.js` del 15-nov (PID 82992, lanzado desde un worktree viejo ya en la Papelera) y un `curl` sin port-forward daría un falso verde (C-61, L45). **Todo el archivo usa ahora 3402** (progress); identity 3101 e ingestion 3202 estaban libres. No toques el proceso del 3401: no es de la tarea. Esto no cambia la autorización del humano, que sigue siendo `svc/progress-service` hacia un puerto local libre.
+
 ## Notas
 
 - Archivos que se **modifican en su sitio**: `packages/shared-types/src/trends.ts`, `apps/progress-service/src/server.ts`, `__tests__/server.test.ts`, `__tests__/history.test.ts` (solo añadir `identityUrl`), `k8s/progress/configmap.yaml`, `k8s/progress/deployment.yaml`. Nada de duplicados con sufijo.
@@ -272,7 +276,7 @@ Qué pruebas se escriben **en esta tarea**, no después:
 - **El listado de ingestion ya viene más reciente primero**, y `calculateTrends` ya lo invierte: `scoreHistory` es `series` sin tocar. No reordenes por `timestamp`.
 - **`trend-service.ts` no sirve tal cual** para esta tarea, porque `getTrends` lee solo ingestion y esta tarea necesita el tier primero. No lo cambies: compón `fetchLimits` (nuevo) + `getTrends` (existente) en el handler.
 - **Hacia identity, `fetch` con `redirect: 'error'`**, `AbortSignal.timeout` y un resultado discriminado que nunca lanza (L28 y molde de `ingestion-client.ts`).
-- **Permisos de cluster** (los da el humano **tarea por tarea**; el orquestador los pide con lista exacta antes de despachar y se los pasa al subagente): _codificador (CA-15a):_ `docker build` de `progress-service:u7-T01`, `kind load docker-image progress-service:u7-T01`, `kubectl apply -f k8s/progress/`, `kubectl rollout status` y `kubectl port-forward svc/progress-service 3401:3400`. _Revisor (CA-16b):_ port-forward a identity (3101), ingestion (3202) y progress (3401), registrar usuarios `*.test` y `POST /api/users/me/subscribe` sobre ellos; **solo lectura** con `kubectl`. Ninguno reinicia ni escala identity, ingestion o trust. Cualquier denegación se reporta como «no verificable».
+- **Permisos de cluster** (los da el humano **tarea por tarea**; el orquestador los pide con lista exacta antes de despachar y se los pasa al subagente): _codificador (CA-15a):_ `docker build` de `progress-service:u7-T01`, `kind load docker-image progress-service:u7-T01`, `kubectl apply -f k8s/progress/`, `kubectl rollout status` y `kubectl port-forward svc/progress-service 3402:3400`. _Revisor (CA-16b):_ port-forward a identity (3101), ingestion (3202) y progress (3402), registrar usuarios `*.test` y `POST /api/users/me/subscribe` sobre ellos; **solo lectura** con `kubectl`. Ninguno reinicia ni escala identity, ingestion o trust. Cualquier denegación se reporta como «no verificable».
 - Los secretos nuevos no hacen falta: reutiliza `jwt-secret` (ya montado). **No** hace falta `anthropic-key`.
 - `npm test` ya lleva `--coverage`; para quitarlo se pasa `--coverage=false`. Vigila **`Test Suites:`** además de `Tests:` (C-57).
 - No hagas push, no abras PR, no fusiones. `git add <rutas explícitas>` (nunca `-a`) y un subdirectorio propio del scratchpad para `$WORK`.
