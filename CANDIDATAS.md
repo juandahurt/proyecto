@@ -222,14 +222,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** dos aserciones adicionales. Sin cambio de código de producción.
 
-### C-43 — identity y trust guardan su SQLite en un `emptyDir`
-
-**Origen:** Hallazgo del orquestador al verificar el cluster (ola 7). `k8s/identity/deployment.yaml` y `k8s/trust/deployment.yaml` montan `data-volume` como `emptyDir: {}`: cualquier reinicio del pod borra usuarios, suscripciones y onboarding, mientras que los uploads de ingestion (PVC) conservan `user_id` huérfanos.
-
-**Qué sería:** PVC por servicio (como `ingestion-blobs`) con `strategy: Recreate`, o aceptar explícitamente la pérdida. Decisión del humano.
-
-**Decisión del humano (ola 9, 2026-11-18):** PVC por servicio (identity y trust). Resuelta por `tareas/u14-T01-pvc-identity-trust.md` (PR #22; también despliega bcrypt 6 de identity).
-
 ### C-44 — Sin tope al tamaño de la respuesta de ingestion en ProgressService
 
 **Origen:** Sonda P8 de `revisiones/u5-T02/ronda-1.md`: se aceptaron 20 MB en 70 ms. Enlaza con C-40 (paginación).
@@ -369,3 +361,7 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 ### C-23 — Razón de fallback propia para errores de red/5xx (`api_error`)
 
 **Descartada por el humano (ola 9, 2026-11-18):** `fallbackReason: "timeout"` sigue cubriendo red y 5xx. No se toca `shared-types` por esto.
+
+### C-43 — identity y trust guardan su SQLite en un `emptyDir`
+
+**Cerrada por u14-T01 (PR #22, `eb8c014`):** PVC `identity-data` y `trust-data` con `strategy: Recreate`; la persistencia se comprobó por lectura de vuelta tras reiniciar. Identity corre `identity-service:u14-T01` (bcrypt 6). Quedan C-60 (SIGTERM y checkpoint de WAL), C-61 y C-62 (`reclaimPolicy: Delete`).
