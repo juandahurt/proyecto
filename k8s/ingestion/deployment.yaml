@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ingestion-service
-          image: ingestion-service:u5-T03
+          image: ingestion-service:u0-T03
           imagePullPolicy: Never
           ports:
             - name: http
