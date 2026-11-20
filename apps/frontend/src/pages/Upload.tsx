@@ -12,8 +12,10 @@ import { useRecentUploads } from '../lib/recent-context';
 const MSG_INVALID_IMAGE = "That file doesn't look like a valid image";
 const MSG_FAILED = 'Upload failed — please try again';
 const MSG_NETWORK = 'Upload failed — check your connection and try again';
+const MSG_LIMIT_REACHED = "You've reached your free plan limit for this month";
 
 function serverMessage(out: Outcome<UploadData>): string {
+  if (out.status === 402) return MSG_LIMIT_REACHED;
   if (out.status === 413) return MSG_TOO_LARGE;
   if (out.status === 422) return MSG_INVALID_IMAGE;
   if (out.kind === 'network') return MSG_NETWORK;
@@ -27,6 +29,7 @@ export default function Upload() {
   const { refresh: refreshRecent } = useRecentUploads();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const busy = useRef(false);
 
   // Al entrar se vuelven a leer el contador y la lista (el layout puede llevar tiempo montado).
@@ -39,6 +42,7 @@ export default function Upload() {
     if (busy.current) return;
     busy.current = true;
     setError(null);
+    setLimitReached(false);
     setUploading(true);
     const out = await uploadImage(api, file);
     busy.current = false;
@@ -51,6 +55,7 @@ export default function Upload() {
     setUploading(false);
     if (out.kind === 'unauthorized') return; // el cliente ya cerró la sesión
     setError(serverMessage(out));
+    setLimitReached(out.status === 402);
   }
 
   const exhausted = limits?.tier === 'free' && limits.uploadsRemaining === 0;
@@ -77,6 +82,12 @@ export default function Upload() {
             <Alert>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+          {limitReached && (
+            <UpgradePrompt
+              uploadsLimit={limits?.uploadsLimit ?? null}
+              resetDate={limits?.resetDate ?? null}
+            />
           )}
         </div>
       )}

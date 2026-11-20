@@ -12,6 +12,7 @@ import { writeBlob } from '../service/blob-store';
 import { signThumbnailUrl } from '../service/thumbnail-url';
 import { UploadRepository } from '../service/upload-repository';
 import { resolveCritique, CritiqueOutcome } from '../service/critique-outcome';
+import { fetchLimits, incrementCounter, FetchFn } from '../service/identity-client';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -35,6 +36,12 @@ export interface UploadsRouterDeps {
   signingKey: string;
   /** Reloj en ms epoch. */
   now: () => number;
+  /** Fetch inyectable para el cliente de identity (tests). */
+  fetchFn: FetchFn;
+  /** Base URL de identity-service. */
+  identityUrl: string;
+  /** Timeout en ms para llamadas a identity. */
+  identityTimeoutMs: number;
 }
 
 /**
@@ -57,11 +64,42 @@ export function createUploadsRouter({
   claudeClient,
   signingKey,
   now,
+  fetchFn,
+  identityUrl,
+  identityTimeoutMs,
 }: UploadsRouterDeps): Router {
   const router = Router();
 
   router.post(
     '/',
+    // Check de límite ANTES de multer/blob: si identity dice uploadsRemaining<=0, rechaza
+    // sin leer el body multipart. Fail-open: un fetchLimits fallido deja pasar la subida.
+    async (req: Request, res: Response, next: NextFunction) => {
+      const authorization = req.header('authorization');
+      if (!authorization) {
+        // Sin Authorization no hay nada que consultar; requireAuth (antes del router) ya
+        // debería haber bloqueado esto, pero por defensa se deja pasar a su 401 normal.
+        next();
+        return;
+      }
+      const limits = await fetchLimits({
+        authorization,
+        fetchFn,
+        baseUrl: identityUrl,
+        timeoutMs: identityTimeoutMs,
+      });
+      if (!limits.ok) {
+        // Fail-open: identity caído/timeout/respuesta inesperada nunca bloquea la subida.
+        console.warn('[uploads] fetchLimits unavailable, failing open');
+        next();
+        return;
+      }
+      if (limits.uploadsRemaining !== null && limits.uploadsRemaining <= 0) {
+        res.status(402).json({ data: null, error: 'Upload limit reached', status: 402 });
+        return;
+      }
+      next();
+    },
     // Multer procesa el multipart y limita el tamaño antes de que el handler lo vea
     (req: Request, res: Response, next: NextFunction) => {
       upload.single('file')(req, res, (err) => {
@@ -225,6 +263,20 @@ export function createUploadsRouter({
         status: 202,
       } satisfies UploadResult;
       res.status(202).json(body);
+
+      // Crítica ready: incrementa el contador en identity en segundo plano, DESPUÉS de
+      // responder. Nunca bloquea la respuesta ya enviada ni hace fallar el request.
+      // Log sin userId ni token: el error puede arrastrarlos.
+      incrementCounter({
+        userId,
+        fetchFn,
+        baseUrl: identityUrl,
+        timeoutMs: identityTimeoutMs,
+      }).then((result) => {
+        if (!result.ok) {
+          console.error('[uploads] incrementCounter failed');
+        }
+      });
     }
   );
 

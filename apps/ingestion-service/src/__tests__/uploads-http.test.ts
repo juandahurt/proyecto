@@ -14,6 +14,7 @@ import { AnthropicIntegrationError } from '../service/anthropic-error';
 import { createDatabase } from '../service/database';
 import { createUploadRepository } from '../service/upload-repository';
 import { createApp } from '../server';
+import * as blobStore from '../service/blob-store';
 
 const TEST_SIGNING_SECRET = 'a-test-secret-for-tests-only';
 const TEST_SIGNING_KEY = 'test-only-signing-key-0123456789abcdef';
@@ -85,6 +86,27 @@ const STUB_CLAUDE_RESPONSE: ClaudeVisionResponse = {
 /** Stub del cliente Claude Vision que devuelve datos fijos sin llamar a la red. */
 const claudeClientStub = jest.fn().mockResolvedValue(STUB_CLAUDE_RESPONSE);
 
+const TEST_IDENTITY_URL = 'http://identity-test.invalid';
+
+/** fetchFn stub por defecto: identity responde ilimitado (uploadsRemaining: null) e incrementCounter ok. */
+function makeIdentityFetchStub(): jest.Mock {
+  return jest.fn(async (url: string) => {
+    if (url.includes('/increment-counter')) {
+      return new Response(JSON.stringify({ data: { count: 1 }, error: null, status: 200 }), {
+        status: 200,
+      });
+    }
+    return new Response(
+      JSON.stringify({
+        data: { tier: 'free', uploadsRemaining: null, uploadsLimit: null, resetDate: null },
+        error: null,
+        status: 200,
+      }),
+      { status: 200 }
+    );
+  });
+}
+
 describe('POST /api/uploads', () => {
   let db: ReturnType<typeof createDatabase>;
   let repo: ReturnType<typeof createUploadRepository>;
@@ -102,7 +124,14 @@ describe('POST /api/uploads', () => {
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
     // Inyectar el stub de claudeClient para evitar llamadas a la red en tests
-    app = createApp({ db, repo, claudeClient: claudeClientStub, signingKey: TEST_SIGNING_KEY });
+    app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: makeIdentityFetchStub() as unknown as typeof fetch,
+    });
   });
 
   afterAll(() => {
@@ -409,7 +438,14 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
     process.env.BLOB_DIR = tmpBlobDir;
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
-    app = createApp({ db, repo, claudeClient: claudeClientStub, signingKey: TEST_SIGNING_KEY });
+    app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: makeIdentityFetchStub() as unknown as typeof fetch,
+    });
   });
 
   afterAll(() => {
@@ -514,6 +550,8 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
       repo: failingRepo,
       claudeClient: claudeClientStub,
       signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: makeIdentityFetchStub() as unknown as typeof fetch,
     });
     const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -595,6 +633,8 @@ describe('u4: persistencia y GET /api/uploads/:uploadId', () => {
       repo: spyRepo,
       claudeClient: claudeClientStub,
       signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: makeIdentityFetchStub() as unknown as typeof fetch,
     });
     try {
       const created = await post(USER_A, spyApp);
@@ -703,7 +743,14 @@ describe('u5: GET /api/uploads (listado del usuario)', () => {
   beforeEach(() => {
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
-    app = createApp({ db, repo, claudeClient: claudeClientStub, signingKey: TEST_SIGNING_KEY });
+    app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: makeIdentityFetchStub() as unknown as typeof fetch,
+    });
     claudeClientStub.mockReset();
     claudeClientStub.mockResolvedValue(STUB_CLAUDE_RESPONSE);
   });
@@ -879,5 +926,215 @@ describe('u5: GET /api/uploads (listado del usuario)', () => {
       .set('Authorization', `Bearer ${makeJwt(USER_A)}`);
     expect(res.status).toBe(200);
     expect(UploadDetailSchema.safeParse(res.body).success).toBe(true);
+  });
+});
+
+// ---- u9-T02: enforcement cross-service del contador de subidas (C-76) ----
+describe('u9-T02: enforcement del límite de subidas', () => {
+  let db: ReturnType<typeof createDatabase>;
+  let repo: ReturnType<typeof createUploadRepository>;
+  let tmpBlobDir: string;
+  const originalJwtSecret = process.env.JWT_SECRET;
+  const originalBlobDir = process.env.BLOB_DIR;
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = TEST_SIGNING_SECRET;
+    tmpBlobDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ingestion-u9t02-test-'));
+    process.env.BLOB_DIR = tmpBlobDir;
+    db = createDatabase(':memory:');
+    repo = createUploadRepository(db);
+  });
+
+  afterAll(() => {
+    db.close();
+    if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalJwtSecret;
+    if (originalBlobDir === undefined) delete process.env.BLOB_DIR;
+    else process.env.BLOB_DIR = originalBlobDir;
+    fs.rmSync(tmpBlobDir, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    claudeClientStub.mockReset();
+    claudeClientStub.mockResolvedValue(STUB_CLAUDE_RESPONSE);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function limitsResponse(uploadsRemaining: number | null): Response {
+    return new Response(
+      JSON.stringify({
+        data: { tier: 'free', uploadsRemaining, uploadsLimit: 10, resetDate: null },
+        error: null,
+        status: 200,
+      }),
+      { status: 200 }
+    );
+  }
+
+  function incrementResponse(): Response {
+    return new Response(JSON.stringify({ data: { count: 1 }, error: null, status: 200 }), {
+      status: 200,
+    });
+  }
+
+  const upJpeg = (appUnderTest: ReturnType<typeof createApp>, userId: string) =>
+    request(appUnderTest)
+      .post('/api/uploads')
+      .set('Authorization', `Bearer ${makeJwt(userId)}`)
+      .attach('file', minimalJpegBuffer(30), { filename: 't.jpg', contentType: 'image/jpeg' });
+
+  // CA-4: uploadsRemaining: 0 → 402 ANTES de escribir el blob
+  it('CA-4: uploadsRemaining 0 → 402 Upload limit reached, sin llamar a writeBlob', async () => {
+    const writeBlobSpy = jest.spyOn(blobStore, 'writeBlob');
+    const fetchFn = jest.fn().mockResolvedValue(limitsResponse(0));
+    const app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+    const countBefore = repo.countAll();
+
+    const res = await upJpeg(app, 'user-at-limit');
+
+    expect(res.status).toBe(402);
+    expect(res.body).toEqual({ data: null, error: 'Upload limit reached', status: 402 });
+    expect(writeBlobSpy).not.toHaveBeenCalled();
+    expect(repo.countAll()).toBe(countBefore);
+    expect(claudeClientStub).not.toHaveBeenCalled();
+  });
+
+  // CA-5 (reafirmado aquí con límite explícito > 0): el flujo normal sigue igual
+  it('CA-5: uploadsRemaining 7 (>0) → la subida sigue su flujo normal (202 ready)', async () => {
+    const fetchFn = jest.fn().mockResolvedValue(limitsResponse(7));
+    const app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+    const res = await upJpeg(app, 'user-with-headroom');
+    expect(res.status).toBe(202);
+    expect(res.body.data.status).toBe('ready');
+  });
+
+  // CA-6: fetchLimits falla (timeout/red/bad-response) → fail-open, la subida sigue su curso
+  it.each([
+    ['timeout', () => Promise.reject(new DOMException('slow', 'TimeoutError'))],
+    ['red caída', () => Promise.reject(new TypeError('fetch failed'))],
+    ['respuesta inesperada (500)', () => Promise.resolve(new Response(null, { status: 500 }))],
+  ])(
+    'CA-6: identity %s → fail-open, subida procesada igual (202, no 402 ni 500)',
+    async (_label, mk) => {
+      const fetchFn = jest.fn().mockImplementation(mk);
+      const app = createApp({
+        db,
+        repo,
+        claudeClient: claudeClientStub,
+        signingKey: TEST_SIGNING_KEY,
+        identityUrl: TEST_IDENTITY_URL,
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const res = await upJpeg(app, 'user-identity-down');
+      expect(res.status).toBe(202);
+      expect(res.body.data.status).toBe('ready');
+      warnSpy.mockRestore();
+    }
+  );
+
+  // CA-7: crítica ready → incrementCounter llamado con el userId correcto
+  it('CA-7: crítica ready → incrementCounter llamado con el userId correcto', async () => {
+    const fetchFn = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('increment-counter')) return Promise.resolve(incrementResponse());
+      return Promise.resolve(limitsResponse(5));
+    });
+    const app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+    const userId = 'user-ready-increment';
+    const res = await upJpeg(app, userId);
+    expect(res.status).toBe(202);
+    expect(res.body.data.status).toBe('ready');
+
+    // El incremento es en segundo plano: se espera a que la cola de microtasks drene.
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const incrementCall = fetchFn.mock.calls.find(([url]: [string]) =>
+      url.includes('increment-counter')
+    );
+    expect(incrementCall).toBeDefined();
+    expect(incrementCall[0]).toBe(
+      `${TEST_IDENTITY_URL}/api/internal/users/${userId}/increment-counter`
+    );
+  });
+
+  // CA-7: crítica low_confidence (fallback) → incrementCounter NO llamado
+  it('CA-7: crítica low_confidence (fallback) → incrementCounter NO llamado', async () => {
+    claudeClientStub.mockResolvedValueOnce({ ...STUB_CLAUDE_RESPONSE, confidence: 'LOW' });
+    const fetchFn = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('increment-counter')) return Promise.resolve(incrementResponse());
+      return Promise.resolve(limitsResponse(5));
+    });
+    const app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+    const res = await upJpeg(app, 'user-low-confidence-no-increment');
+    expect(res.status).toBe(202);
+    expect(res.body.data.status).toBe('low_confidence');
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const incrementCall = fetchFn.mock.calls.find(([url]: [string]) =>
+      url.includes('increment-counter')
+    );
+    expect(incrementCall).toBeUndefined();
+  });
+
+  // CA-8: fallo de incrementCounter no afecta la respuesta 202 ya enviada; log sin userId/token
+  it('CA-8: incrementCounter falla (500) → la respuesta 202 ya enviada no se ve afectada, log sin userId', async () => {
+    const userId = 'user-increment-fails-secret';
+    const fetchFn = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('increment-counter'))
+        return Promise.resolve(new Response(null, { status: 500 }));
+      return Promise.resolve(limitsResponse(5));
+    });
+    const app = createApp({
+      db,
+      repo,
+      claudeClient: claudeClientStub,
+      signingKey: TEST_SIGNING_KEY,
+      identityUrl: TEST_IDENTITY_URL,
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const res = await upJpeg(app, userId);
+    expect(res.status).toBe(202);
+    expect(res.body.data.status).toBe('ready');
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(errSpy).toHaveBeenCalled();
+    const logged = JSON.stringify(errSpy.mock.calls);
+    expect(logged).not.toContain(userId);
+    errSpy.mockRestore();
   });
 });

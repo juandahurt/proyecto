@@ -26,7 +26,7 @@ describe('DELETE /api/internal/users/:userId/data', () => {
     process.env.THUMBNAIL_SIGNING_KEY = 'a'.repeat(32);
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
-    app = createApp({ db, repo });
+    app = createApp({ db, repo, identityUrl: 'http://identity-test.invalid' });
   });
 
   afterEach(() => {

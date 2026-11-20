@@ -64,7 +64,14 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
     db = createDatabase(':memory:');
     repo = createUploadRepository(db);
     findByIdSpy = jest.spyOn(repo, 'findById');
-    app = createApp({ db, repo, claudeClient: claude, signingKey: KEY, now: () => clock });
+    app = createApp({
+      db,
+      repo,
+      claudeClient: claude,
+      signingKey: KEY,
+      now: () => clock,
+      identityUrl: 'http://identity-test.invalid',
+    });
   });
 
   afterAll(() => {
@@ -264,6 +271,7 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
           claudeClient: claude,
           signingKey: KEY,
           now: () => clock,
+          identityUrl: 'http://identity-test.invalid',
         });
         const res = await request(fakeApp).get(
           signThumbnailUrl({ uploadId: id, key: KEY, nowMs: T0 })
@@ -291,11 +299,20 @@ describe('GET /api/uploads/:uploadId/thumbnail y thumbnailUrl firmada', () => {
     });
     it('createApp lanza con clave de 31 caracteres y no con 32', () => {
       expect(() => createApp({ db, repo, signingKey: 'k'.repeat(31) })).toThrow();
-      expect(() => createApp({ db, repo, signingKey: 'k'.repeat(32) })).not.toThrow();
+      expect(() =>
+        createApp({
+          db,
+          repo,
+          signingKey: 'k'.repeat(32),
+          identityUrl: 'http://identity-test.invalid',
+        })
+      ).not.toThrow();
     });
     it('toma la clave de process.env.THUMBNAIL_SIGNING_KEY si no se inyecta', () => {
       process.env.THUMBNAIL_SIGNING_KEY = 'k'.repeat(40);
-      expect(() => createApp({ db, repo })).not.toThrow();
+      expect(() =>
+        createApp({ db, repo, identityUrl: 'http://identity-test.invalid' })
+      ).not.toThrow();
     });
     it('POST y GET detalle sin JWT → 401 unauthenticated; /health público', async () => {
       const p = await request(app).post('/api/uploads');

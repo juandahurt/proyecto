@@ -9,8 +9,10 @@ import { createUploadRepository, UploadRepository } from './service/upload-repos
 import { callClaudeVision } from './service/claude-client';
 import { createThumbnailHandler } from './handlers/thumbnail';
 import { createDeleteUserDataRouter } from './handlers/delete-user-data';
+import { FetchFn } from './service/identity-client';
 
 const MIN_SIGNING_KEY_LENGTH = 32;
+const DEFAULT_IDENTITY_TIMEOUT_MS = 5000;
 
 export interface AppDeps {
   db?: Database.Database;
@@ -24,6 +26,17 @@ export interface AppDeps {
   signingKey?: string;
   /** Reloj en ms epoch (por defecto Date.now); inyectable en tests. */
   now?: () => number;
+  /** Fetch inyectable para el cliente de identity (tests). Por defecto el global. */
+  fetchFn?: FetchFn;
+  /** Base URL de identity-service; si falta, process.env.IDENTITY_URL (lanza si no hay ninguna). */
+  identityUrl?: string;
+  /** Timeout en ms para llamadas a identity; si falta, process.env.IDENTITY_TIMEOUT_MS o 5000. */
+  identityTimeoutMs?: number;
+}
+
+function readIdentityTimeout(value: string | undefined): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_IDENTITY_TIMEOUT_MS;
 }
 
 /**
@@ -55,6 +68,14 @@ export function createApp(deps?: AppDeps): Application {
     );
   }
 
+  const identityUrl = deps?.identityUrl ?? process.env.IDENTITY_URL;
+  if (!identityUrl) {
+    throw new Error('IDENTITY_URL is required');
+  }
+  const identityTimeoutMs =
+    deps?.identityTimeoutMs ?? readIdentityTimeout(process.env.IDENTITY_TIMEOUT_MS);
+  const fetchFn = deps?.fetchFn ?? fetch;
+
   // GET /api/uploads/:uploadId/thumbnail — pública (URL firmada); ANTES de requireAuth
   app.get('/api/uploads/:uploadId/thumbnail', createThumbnailHandler({ repo, signingKey, now }));
 
@@ -62,7 +83,15 @@ export function createApp(deps?: AppDeps): Application {
   app.use(
     '/api/uploads',
     requireAuth,
-    createUploadsRouter({ repo, claudeClient, signingKey, now })
+    createUploadsRouter({
+      repo,
+      claudeClient,
+      signingKey,
+      now,
+      fetchFn,
+      identityUrl,
+      identityTimeoutMs,
+    })
   );
 
   // /api/internal — network-trusted, sin requireAuth (mismo patrón que increment-counter)

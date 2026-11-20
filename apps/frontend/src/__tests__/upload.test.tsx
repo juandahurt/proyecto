@@ -14,6 +14,25 @@ import {
   zone,
 } from './helpers';
 
+describe('Upload (u9-T02): 402 límite de subidas alcanzado', () => {
+  it('402 → mensaje específico de límite y UpgradePrompt visible debajo del error, sin navegar', async () => {
+    const { f } = setupApp('/upload', {
+      'POST /api/uploads': () =>
+        jsonResponse(402, { data: null, error: 'Upload limit reached', status: 402 }),
+    });
+    await screen.findByRole('group', { name: 'Drop zone for your drawing' });
+    dropOn(zone(), [makeFile('image/jpeg')]);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "You've reached your free plan limit for this month"
+    );
+    expect(
+      screen.getByRole('button', { name: 'Upgrade for unlimited uploads' })
+    ).toBeInTheDocument();
+    expect(currentPath()).toBe('/upload');
+    expect(countOf(f, 'POST /api/uploads')).toBe(1);
+  });
+});
+
 const SECRET_STEM = 'mi-dibujo-secreto-7f3a';
 const SECRET_NAME = `${SECRET_STEM}.jpg`;
 
