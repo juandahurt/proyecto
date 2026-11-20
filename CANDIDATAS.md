@@ -4,6 +4,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 ## Abiertas
 
+### C-84 — Pantalla real de política de datos (`/policy`)
+
+**Origen:** orquestador, al redactar u0-T05. `GET /api/policy` existe en trust-service desde u12 y siempre devolvió `200` con el texto de la política, pero el frontend nunca tuvo una pantalla que lo leyera. u0-T05 deja `/policy` como cascarón "coming soon" enlazado desde Settings (decisión del humano, 2026-11-20): cumple el enlace de AC-12.1 ("alcanzable en ≤2 clics") pero no el contenido ("encuentra una declaración clara...").
+
+**Qué sería:** una pantalla `/policy` que lea `GET /api/policy` y pinte `data.content`, con sus propios tests y manejo de error/401, reemplazando el cascarón de u0-T05.
+
 ### C-01 — Shard de auditoría `typewriter-local-*` aparece como M persistente en el árbol
 
 **Origen:** Revisor en `revisiones/WS-T02/ronda-1.md`, sección "Tareas candidatas". El árbol tiene `aidlc/spaces/default/intents/260925-feature/audit/typewriter-local-2e752e11864f.md` modificado antes y después de la ronda. No lo tocó ni el codificador (su diff contra `main` no lo incluye) ni el revisor (herramientas de solo lectura). Es un shard escrito por el engine de AI-DLC.
