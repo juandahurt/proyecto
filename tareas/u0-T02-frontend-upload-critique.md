@@ -395,6 +395,11 @@ Hallazgos de la ronda 2 (`revisiones/u0-T02/ronda-2.md`, NO-VERDE) y mi arbitraj
 - **CA-2** pasa a **20** mutaciones (las 16 + M07 a M10). **CA-12** cuenta los tests nuevos. **CA-20** añade que `git diff fe9d3af HEAD --name-only -- apps/frontend k8s package-lock.json | grep -vE '__tests__/|jest\.setup\.ts'` esté **vacío** (nada de producción cambió desde `fe9d3af`), y CA-17 se comprueba por lectura (el bundle servido sigue siendo `index-Bn-yc1Pp.js`, byte a byte igual al build del HEAD).
 - Fuera de la ronda 3: C-82 y los de siempre (C-76 a C-81).
 
+### Fix de especificación (post-ronda 3, 2026-11-20)
+
+- **F-09, mecanismo (error del orquestador):** pedí fijar `process.env.TZ = 'Pacific/Pago_Pago'` en `jest.setup.ts`. En el entorno de Jest `process` es una copia y asignarlo **no cambia** la zona de ICU (el codificador lo comprobó con una sonda): el mecanismo era inviable. **Se acepta la solución del codificador:** `jest.setup.ts` envuelve `Intl.DateTimeFormat` para que, **sin `timeZone` explícito**, use `Pacific/Pago_Pago` (UTC−11). El criterio observable no cambia: con `TZ=UTC` explícito, quitar `timeZone: 'UTC'` de `formatDate` o de `formatResetDate` **hace fallar** la suite. **Límite conocido y aceptado (ATENCIÓN 1 del codificador):** `new Date().getTimezoneOffset()` no cambia, así que un `toLocale*String` sin `timeZone` en producción no quedaría cubierto; hoy el código no lo usa. El revisor no lo trata como defecto de esta ronda.
+- **F-07, exclusiones de la guarda (aceptadas):** `constructor` y lo heredado de `Object.prototype`, el constructor `Console`, los internos con `_` y `getBuffer` (lo llama el ejecutor de Jest al terminar el test; sustituirlo rompería su salida). Quedan documentadas en el código y en la bitácora.
+
 ## Notas
 
 - **Archivos que se modifican en su sitio:** `apps/frontend/jest.setup.ts`, `src/__tests__/helpers.tsx` (se quita `spyConsole`), `src/api/client.ts`, `src/api/endpoints.ts` (o un `uploads.ts` nuevo para los endpoints de subida), `src/auth/guards.tsx`, `src/components/AppLayout.tsx`, `src/pages/Upload.tsx`, `src/App.tsx`, `k8s/frontend/deployment.yaml`, `package-lock.json` y `apps/frontend/package.json`. Todo lo demás es nuevo. Nada de duplicados con sufijo.
