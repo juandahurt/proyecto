@@ -426,6 +426,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** si algún día el frontend tiene código de Node (SSR) o timers largos, espiar también `process.stdout/stderr` y vaciar los timers pendientes en un `afterAll`. Hoy no hay ni lo uno ni lo otro en el MVP.
 
+### C-83 — C9 (ProgressService → delete trend data) sin construir
+
+**Origen:** orquestador, al redactar u13-T01. El contrato `DELETE /api/internal/users/{userId}/data` de progress-service está definido en `contract-design/contract-summary.md` (C9) pero `progress-service` no persiste ningún `TrendSnapshot` (C-55): calcula todo al vuelo desde `GET /api/uploads` de ingestion. Construir el endpoint hoy sería código muerto. u13-T01 lo omite de la cascada de borrado.
+
+**Qué sería:** si progress-service alguna vez persiste datos propios (caché, snapshot), construir el endpoint y añadirlo a la cascada de `trust-service`.
+
 ## Cerradas
 
 ### C-75 — Espía de consola global en los tests del frontend
