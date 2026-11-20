@@ -1,16 +1,68 @@
-import {
-  allowConsole,
-  assertConsoleSilent,
-  GUARDED_METHODS,
-  resetConsoleGuard,
-} from './console-guard';
+import { allowConsole, assertConsoleSilent, resetConsoleGuard } from './console-guard';
 
 // Alias guardados al CARGAR el módulo de test (después de jest.setup.ts, antes de cualquier test):
 // solo se detectan si la guarda ya estaba instalada cuando se cargó este archivo (F-01).
 const aliasError = console.error;
 const { warn: aliasWarn } = console;
 
+/**
+ * Todas las propiedades función de `console` (propias y de su cadena de prototipos), calculadas
+ * aquí de forma independiente de la guarda. Se excluyen `constructor`, lo heredado de
+ * `Object.prototype`, el constructor `Console`, los internos con `_` y `getBuffer` (lo llama el
+ * ejecutor de Jest). Un método que otra versión de Node añada a `console` entra solo.
+ */
+function consoleFunctionNames(): string[] {
+  const objectProto = new Set(Object.getOwnPropertyNames(Object.prototype));
+  const target = console as unknown as Record<string, unknown>;
+  const names = new Set<string>();
+  let obj: object | null = console;
+  while (obj && obj !== Object.prototype) {
+    for (const key of Object.getOwnPropertyNames(obj)) {
+      if (objectProto.has(key) || key === 'getBuffer') continue;
+      if (key.startsWith('_') || /^[A-Z]/.test(key)) continue;
+      if (typeof target[key] === 'function') names.add(key);
+    }
+    obj = Object.getPrototypeOf(obj);
+  }
+  return [...names].sort();
+}
+
 describe('console-guard', () => {
+  it('la lista cubre al menos los métodos habituales y los que usaban las mutaciones M07 a M10', () => {
+    expect(consoleFunctionNames()).toEqual(
+      expect.arrayContaining([
+        'log',
+        'info',
+        'warn',
+        'error',
+        'debug',
+        'trace',
+        'dir',
+        'table',
+        'assert',
+        'group',
+        'groupCollapsed',
+        'count',
+        'countReset',
+        'dirxml',
+        'time',
+        'timeLog',
+        'timeEnd',
+      ])
+    );
+  });
+
+  it.each(consoleFunctionNames())(
+    'console.%s hace que assertConsoleSilent lance y nombre el método',
+    (method) => {
+      allowConsole('probar la propia guarda: el afterEach global no debe fallar este test');
+      (console as unknown as Record<string, (...a: unknown[]) => void>)[method]('valor-secreto');
+      expect(() => assertConsoleSilent()).toThrow(
+        new RegExp(`console\\.${method}\\(.*valor-secreto`)
+      );
+    }
+  );
+
   it('un alias de console.error guardado a nivel de módulo también se detecta', () => {
     allowConsole('probar la propia guarda: el afterEach global no debe fallar este test');
     aliasError('por-alias');
@@ -35,14 +87,6 @@ describe('console-guard', () => {
 
   it('el espía del test anterior no contamina a este', () => {
     expect(() => assertConsoleSilent()).not.toThrow();
-  });
-
-  it.each(GUARDED_METHODS)('cubre console.%s', (method) => {
-    allowConsole('probar la propia guarda: el afterEach global no debe fallar este test');
-    (console[method] as (...a: unknown[]) => void)('valor-secreto', 42);
-    expect(() => assertConsoleSilent()).toThrow(
-      new RegExp(`console\\.${method}\\(valor-secreto, 42\\)`)
-    );
   });
 
   it('allowConsole("") lanza, y con solo espacios también', () => {

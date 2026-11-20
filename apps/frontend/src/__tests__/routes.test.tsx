@@ -104,12 +104,12 @@ describe('routes y guard', () => {
     const pending = new Promise<ReturnType<typeof jsonResponse>>((r) => (release = r));
     installFetch({ 'GET /api/onboarding': () => pending });
     renderApp('/upload');
-    expect(screen.getByRole('status')).toHaveTextContent('Loading');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…');
     expect(screen.queryByText('Upload a Drawing')).not.toBeInTheDocument();
     expect(screen.queryByText('Welcome to Estudio')).not.toBeInTheDocument();
     release(onboardingState(true));
     expect(await screen.findByText('Upload a Drawing')).toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
   });
 
   it('un 401 en GET /api/onboarding borra el token y navega a /login', async () => {

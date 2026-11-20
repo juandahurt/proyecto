@@ -199,6 +199,7 @@ function LocationProbe() {
       <div data-testid="location">{loc.pathname}</div>
       <div data-testid="location-search">{loc.search}</div>
       <div data-testid="location-hash">{loc.hash}</div>
+      <div data-testid="location-state">{JSON.stringify(loc.state ?? null)}</div>
     </>
   );
 }
@@ -229,6 +230,10 @@ export function expectFileNameAbsent(name: string) {
   expect(fullLocation()).not.toContain(name);
   expect(fullLocation()).not.toContain(encodeURIComponent(name));
   expect(document.body.innerHTML).not.toContain(name);
+  expect(document.title).not.toContain(name);
+  expect(document.querySelector('[data-testid="location-state"]')?.textContent ?? '').not.toContain(
+    name
+  );
   expect(JSON.stringify({ ...window.localStorage })).not.toContain(name);
   expect(JSON.stringify({ ...window.sessionStorage })).not.toContain(name);
 }

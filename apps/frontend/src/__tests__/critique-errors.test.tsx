@@ -57,15 +57,22 @@ describe('Critique: errores de carga', () => {
     expect(window.localStorage.getItem(TOKEN_KEY)).toBeNull();
   });
 
-  it('mientras carga hay un estado role=status y no la crítica vacía', async () => {
+  it('mientras carga hay «Loading critique…» con role=status dentro de la crítica (no el de la guarda)', async () => {
     let release: (r: ReturnType<typeof detailOk>) => void = () => undefined;
     const pending = new Promise<ReturnType<typeof detailOk>>((r) => (release = r));
     setupApp(`/uploads/${UPLOAD_ID}`, { [KEY]: () => pending as never });
-    expect(await screen.findByRole('status')).toHaveTextContent(/Loading/);
+    // la guarda de onboarding ya dejó pasar: el h1 de la crítica existe y su LoadingScreen se fue
+    await screen.findByRole('heading', { level: 1, name: 'Critique' });
+    expect(screen.queryByText('Loading…')).toBeNull();
+    const msg = screen.getByText('Loading critique…');
+    const status = msg.closest('[role=status]');
+    expect(status).not.toBeNull();
+    expect(screen.getByRole('main')).toContainElement(status as HTMLElement);
     expect(screen.queryByRole('heading', { name: 'AI Critique' })).toBeNull();
     expect(screen.queryByText(NOT_FOUND)).toBeNull();
     release(detailOk());
     expect(await screen.findByText('Sep 24, 2026')).toBeInTheDocument();
+    expect(screen.queryByText('Loading critique…')).toBeNull();
     expect(screen.queryByRole('status')).toBeNull();
   });
 

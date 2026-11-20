@@ -158,6 +158,9 @@ describe('Upload: el nombre del archivo del usuario no sale del File (todos los 
     window.sessionStorage.setItem('x', SECRET_STEM);
     expect(() => expectFileNameAbsent(SECRET_STEM)).toThrow();
     window.sessionStorage.clear();
+    document.title = SECRET_STEM;
+    expect(() => expectFileNameAbsent(SECRET_STEM)).toThrow();
+    document.title = '';
   });
 });
 
