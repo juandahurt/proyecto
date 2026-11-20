@@ -682,8 +682,8 @@ describe('u5: GET /api/uploads (listado del usuario)', () => {
     'sizeBytes',
     'feedback',
     'categoryName',
-    'thumbnailUrl',
-    'sig=',
+    // thumbnailUrl y su firma (sig=) ya NO están prohibidos: u0-T03/C-78 los añade
+    // deliberadamente a cada item del listado (misma regla que el detalle).
   ];
 
   beforeAll(() => {
@@ -752,6 +752,27 @@ describe('u5: GET /api/uploads (listado del usuario)', () => {
     expect(items[1].status).toBe('ready');
     expect(items[1].scores).toHaveLength(5);
     expect(items[1]).not.toHaveProperty('fallbackReason');
+  });
+
+  it('GET /api/uploads: cada item trae thumbnailUrl firmada, para ready y para low_confidence (u0-T03/C-78)', async () => {
+    const ready = await post(USER_A);
+    claudeClientStub.mockRejectedValueOnce(new AnthropicIntegrationError('timeout', 'slow'));
+    const lowConfidence = await post(USER_A);
+    const idReady = ready.body.data.uploadId;
+    const idLowConfidence = lowConfidence.body.data.uploadId;
+
+    const res = await list(USER_A);
+    expect(res.status).toBe(200);
+    expect(UploadListSchema.safeParse(res.body).success).toBe(true);
+    const items = res.body.data.items as { uploadId: string; thumbnailUrl?: string }[];
+    const itemReady = items.find((i) => i.uploadId === idReady);
+    const itemLowConfidence = items.find((i) => i.uploadId === idLowConfidence);
+    expect(typeof itemReady?.thumbnailUrl).toBe('string');
+    expect(itemReady?.thumbnailUrl).toMatch(new RegExp(`^/api/uploads/${idReady}/thumbnail\\?`));
+    expect(typeof itemLowConfidence?.thumbnailUrl).toBe('string');
+    expect(itemLowConfidence?.thumbnailUrl).toMatch(
+      new RegExp(`^/api/uploads/${idLowConfidence}/thumbnail\\?`)
+    );
   });
 
   it('GET /api/uploads: B ve solo lo suyo y el listado vacío da 200 con items []', async () => {

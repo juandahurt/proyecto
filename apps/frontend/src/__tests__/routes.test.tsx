@@ -148,7 +148,6 @@ describe('routes y guard', () => {
     await user.click(screen.getByRole('link', { name: 'My History' }));
     expect(currentPath()).toBe('/history');
     expect(screen.getByRole('heading', { level: 1, name: 'My History' })).toBeInTheDocument();
-    expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Settings' }));
     expect(currentPath()).toBe('/settings');
     expect(screen.getByText(/coming soon/i)).toBeInTheDocument();

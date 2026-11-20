@@ -82,6 +82,18 @@ describe('Critique (3A)', () => {
     await waitFor(() => expect(currentPath()).toBe('/upload'));
   });
 
+  it('«← Back» lleva a /history cuando se llega navegando desde el historial (state.from)', async () => {
+    setupApp({ pathname: `/uploads/${UPLOAD_ID}`, state: { from: 'history' } });
+    const back = await screen.findByRole('link', { name: /Back/ });
+    expect(back).toHaveAttribute('href', '/history');
+  });
+
+  it('«← Back» sigue en /upload cuando no hay state.from (llegada directa, sin navegar desde /history)', async () => {
+    setupApp(`/uploads/${UPLOAD_ID}`);
+    const back = await screen.findByRole('link', { name: /Back/ });
+    expect(back).toHaveAttribute('href', '/upload');
+  });
+
   it('no hay botones de utilidad Yes/No (C-77)', async () => {
     open();
     await screen.findByText('Sep 24, 2026');
