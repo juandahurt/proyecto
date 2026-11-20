@@ -119,7 +119,7 @@ describe('a11y: pantallas de u0-T02', () => {
     await screen.findByRole('link', { name: 'View' });
     const user = userEvent.setup();
     const seen: string[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 9; i++) {
       await user.tab();
       const el = document.activeElement as HTMLElement;
       seen.push(el.getAttribute('aria-label') ?? el.textContent ?? '');
@@ -127,6 +127,7 @@ describe('a11y: pantallas de u0-T02', () => {
     expect(seen).toEqual([
       'Upload',
       'My History',
+      'Progress Trends',
       'Settings',
       'Upgrade',
       'Log out',
@@ -200,11 +201,11 @@ describe('a11y: pantallas de u0-T02', () => {
 
   it('/upgrade tiene un h1 y dentro de la barra el enlace activo se anuncia', async () => {
     setupApp('/upgrade');
-    await screen.findByText('Coming soon.');
+    await screen.findByRole('button', { name: 'Upgrade to Paid' });
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(
       within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link')
-    ).toHaveLength(3);
+    ).toHaveLength(4);
   });
 
   it.each([

@@ -15,6 +15,7 @@ import NotFound from './pages/NotFound';
 import Onboarding from './pages/Onboarding';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
+import Trends from './pages/Trends';
 import Upgrade from './pages/Upgrade';
 import Upload from './pages/Upload';
 
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/upload" element={<Upload />} />
               <Route path="/uploads/:uploadId" element={<Critique />} />
               <Route path="/upgrade" element={<Upgrade />} />
+              <Route path="/trends" element={<Trends />} />
               <Route path="/history" element={<History />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
