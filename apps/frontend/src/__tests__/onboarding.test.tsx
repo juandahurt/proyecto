@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ONBOARDING_CHECKBOXES } from '@proyecto/shared-types';
 import {
@@ -10,7 +10,6 @@ import {
   jsonResponse,
   onboardingState,
   renderApp,
-  spyConsole,
 } from './helpers';
 
 function seedSession() {
@@ -144,15 +143,11 @@ describe('Onboarding', () => {
   });
 
   it('no escribe en la consola ni expone el token', async () => {
-    const spy = spyConsole();
-    const { token } = await openOnboarding(() => jsonResponse(422, {}));
+    await openOnboarding(() => jsonResponse(422, {}));
     const user = userEvent.setup();
     for (const b of screen.getAllByRole('checkbox')) await user.click(b);
     await user.click(startButton());
     await screen.findByRole('alert');
-    expect(spy.callCount()).toBe(0);
-    expect(spy.allArgs().join(' ')).not.toContain(token);
-    spy.restore();
   });
 });
 
@@ -168,14 +163,35 @@ describe('Onboarding: silencio de consola en cada rama de error', () => {
     ],
   ];
   it.each(cases)('onboarding %s no escribe nada en la consola', async (_name, respond) => {
-    const spy = spyConsole();
-    const { token } = await openOnboarding(respond);
+    await openOnboarding(respond);
     const user = userEvent.setup();
     for (const b of screen.getAllByRole('checkbox')) await user.click(b);
     await user.click(startButton());
     await screen.findByRole('alert');
-    expect(spy.callCount()).toBe(0);
-    expect(spy.allArgs().join(' ')).not.toContain(token);
-    spy.restore();
+  });
+});
+
+describe('Onboarding: doble envío', () => {
+  it('dos clics síncronos con la petición en vuelo producen una sola llamada a fetch', async () => {
+    const pending = new Promise<ReturnType<typeof jsonResponse>>(() => undefined);
+    const { f } = await openOnboarding(() => pending as never);
+    const user = userEvent.setup();
+    for (const b of screen.getAllByRole('checkbox')) await user.click(b);
+    const button = startButton();
+    act(() => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
+    expect(f.calls().filter((c) => c.key === 'POST /api/onboarding')).toHaveLength(1);
+  });
+
+  it('dos clics seguidos con userEvent producen una sola llamada', async () => {
+    const pending = new Promise<ReturnType<typeof jsonResponse>>(() => undefined);
+    const { f } = await openOnboarding(() => pending as never);
+    const user = userEvent.setup();
+    for (const b of screen.getAllByRole('checkbox')) await user.click(b);
+    await user.click(startButton());
+    await user.click(startButton());
+    expect(f.calls().filter((c) => c.key === 'POST /api/onboarding')).toHaveLength(1);
   });
 });

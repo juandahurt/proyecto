@@ -17,6 +17,7 @@ export interface ApiClientDeps {
 }
 
 export interface RequestOptions {
+  /** `FormData` se envía tal cual (multipart); cualquier otro valor se serializa como JSON. */
   body?: unknown;
   /** Por defecto true. Login y registro pasan false: no envían `Authorization`. */
   auth?: boolean;
@@ -76,7 +77,10 @@ export function createApiClient(deps: ApiClientDeps): ApiClient {
         redirect: 'error',
         cache: 'no-store',
       };
-      if (options.body !== undefined) {
+      if (options.body instanceof FormData) {
+        // Sin Content-Type: el navegador añade el `boundary` del multipart.
+        init.body = options.body;
+      } else if (options.body !== undefined) {
         headers['Content-Type'] = 'application/json';
         init.body = JSON.stringify(options.body);
       }

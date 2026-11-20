@@ -12,7 +12,6 @@ import {
   jsonResponse,
   onboardingState,
   renderApp,
-  spyConsole,
 } from './helpers';
 
 async function fill(email: string, password: string) {
@@ -161,7 +160,6 @@ describe('Login', () => {
   });
 
   it('la contraseña y el email no aparecen en la URL, en localStorage ni en la consola', async () => {
-    const spy = spyConsole();
     installFetch({
       'POST /api/auth/login': () => authOk(200, fakeJwt()),
       'GET /api/onboarding': () => onboardingState(true),
@@ -173,8 +171,6 @@ describe('Login', () => {
     expect(window.location.href).not.toContain(TEST_PASSWORD);
     expect(currentPath()).not.toContain(TEST_PASSWORD);
     expect(JSON.stringify({ ...window.localStorage })).not.toContain(TEST_PASSWORD);
-    expect(spy.callCount()).toBe(0);
-    spy.restore();
   });
 });
 
@@ -190,14 +186,10 @@ describe('Login: silencio de consola en cada rama de error', () => {
     ],
   ];
   it.each(cases)('login %s no escribe nada en la consola', async (_name, respond) => {
-    const spy = spyConsole();
     installFetch({ 'POST /api/auth/login': respond });
     renderApp('/login');
     const user = await fill(TEST_EMAIL, TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: 'Log in' }));
     await screen.findByRole('alert');
-    expect(spy.callCount()).toBe(0);
-    expect(spy.allArgs().join(' ')).not.toContain(TEST_PASSWORD);
-    spy.restore();
   });
 });

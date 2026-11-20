@@ -1,13 +1,21 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ONBOARDING_CHECKBOXES } from '@proyecto/shared-types';
 import {
   TOKEN_KEY,
+  UPLOAD_ID,
+  detailOk,
+  dropOn,
   fakeJwt,
   installFetch,
   jsonResponse,
   onboardingState,
+  limitsOk,
+  listItem,
+  listOk,
+  makeFile,
   renderApp,
+  setupApp,
 } from './helpers';
 
 const seed = () => window.localStorage.setItem(TOKEN_KEY, fakeJwt());
@@ -89,6 +97,125 @@ describe('a11y', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
     a.unmount();
     renderApp('/zzz');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+});
+
+describe('a11y: pantallas de u0-T02', () => {
+  const critiqueKey = `GET /api/uploads/${UPLOAD_ID}`;
+
+  it('/upload: un h1, zona con nombre accesible e input asociado a una etiqueta', async () => {
+    setupApp('/upload');
+    await screen.findByRole('group', { name: 'Drop zone for your drawing' });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    const input = screen.getByLabelText('Choose an image to upload');
+    expect(input).toBe(document.querySelector('input[type="file"]'));
+  });
+
+  it('/upload: el orden de tabulación es barra lateral, zona, «Browse file», lista', async () => {
+    setupApp('/upload', {
+      'GET /api/uploads': () => listOk([listItem(1)]),
+    });
+    await screen.findByRole('link', { name: 'View' });
+    const user = userEvent.setup();
+    const seen: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      await user.tab();
+      const el = document.activeElement as HTMLElement;
+      seen.push(el.getAttribute('aria-label') ?? el.textContent ?? '');
+    }
+    expect(seen).toEqual([
+      'Upload',
+      'My History',
+      'Settings',
+      'Upgrade',
+      'Log out',
+      'Drop zone for your drawing',
+      'Browse file',
+      'View',
+    ]);
+  });
+
+  it('un error de subida se anuncia con role=alert y no roba el foco', async () => {
+    setupApp('/upload');
+    dropOn(await screen.findByRole('group', { name: 'Drop zone for your drawing' }), [
+      makeFile('image/gif'),
+    ]);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('estado en 0: un h1, aria-live polite y el foco no se mueve', async () => {
+    setupApp('/upload', {
+      'GET /api/users/me/limits': () => limitsOk({ uploadsRemaining: 0 }),
+    });
+    const text = await screen.findByText(/You've used all 10 uploads/);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(text.closest('[aria-live]')).toHaveAttribute('aria-live', 'polite');
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('la lectura fallida del contador se anuncia con role=status', async () => {
+    setupApp('/upload', { 'GET /api/users/me/limits': () => jsonResponse(500, {}) });
+    const note = await screen.findByText('Upload count unavailable');
+    expect(note.closest('[role="status"], [aria-live]')).not.toBeNull();
+  });
+
+  it('crítica: un h1 y el foco inicial queda en el encabezado', async () => {
+    setupApp(`/uploads/${UPLOAD_ID}`);
+    await screen.findByText('Sep 24, 2026');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+  });
+
+  it('crítica: los badges tienen texto accesible', async () => {
+    setupApp(`/uploads/${UPLOAD_ID}`);
+    await screen.findByText('Sep 24, 2026');
+    expect(screen.getAllByLabelText(/^Score \d+ out of 100$/)).toHaveLength(5);
+  });
+
+  it('crítica de baja confianza: un h1 y foco en el encabezado', async () => {
+    setupApp(`/uploads/${UPLOAD_ID}`, {
+      [critiqueKey]: () =>
+        detailOk({
+          status: 'low_confidence',
+          confidence: 'LOW',
+          fallbackReason: 'invalid_schema',
+          categories: undefined,
+        }),
+    });
+    await screen.findByRole('heading', { name: 'Critique Unavailable' });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+  });
+
+  it('crítica con error de carga: un h1, role=alert y operable con teclado', async () => {
+    setupApp(`/uploads/${UPLOAD_ID}`, { [critiqueKey]: () => jsonResponse(500, {}) });
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    const retry = screen.getByRole('button', { name: 'Retry' });
+    retry.focus();
+    expect(retry).toHaveFocus();
+  });
+
+  it('/upgrade tiene un h1 y dentro de la barra el enlace activo se anuncia', async () => {
+    setupApp('/upgrade');
+    await screen.findByText('Coming soon.');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link')
+    ).toHaveLength(3);
+  });
+
+  it.each([
+    ['404', () => jsonResponse(404, {}), UPLOAD_ID],
+    ['403', () => jsonResponse(403, {}), UPLOAD_ID],
+    ['uploadId que no es UUID', () => jsonResponse(404, {}), 'no-es-uuid'],
+  ])('crítica «no encontrado» (%s) se anuncia con role=alert', async (_n, respond, id) => {
+    setupApp(`/uploads/${id}`, { [`GET /api/uploads/${id}`]: respond as never });
+    const msg = await screen.findByText("We couldn't find that critique.");
+    expect(msg.closest('[role=alert],[role=status],[aria-live]')).not.toBeNull();
+    expect(msg.closest('[role=alert]')).not.toBeNull();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 });

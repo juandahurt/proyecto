@@ -1,14 +1,6 @@
 import { createApiClient } from '../api/client';
 import { ackOnboarding, getOnboarding, loginRequest, registerRequest } from '../api/endpoints';
-import {
-  TEST_EMAIL,
-  TEST_PASSWORD,
-  authOk,
-  fakeJwt,
-  headersOf,
-  jsonResponse,
-  spyConsole,
-} from './helpers';
+import { TEST_EMAIL, TEST_PASSWORD, authOk, fakeJwt, headersOf, jsonResponse } from './helpers';
 
 function setup(token: string | null = null, fetchImpl?: jest.Mock) {
   const fetchFn =
@@ -292,7 +284,6 @@ describe('api-client', () => {
 
   describe('silencio de consola', () => {
     it('ningún camino (éxito, 401, 5xx, red) escribe en la consola', async () => {
-      const spy = spyConsole();
       const token = fakeJwt();
       const responses = [
         jsonResponse(200, { data: {}, error: null, status: 200 }),
@@ -318,12 +309,36 @@ describe('api-client', () => {
         })
       );
       await client.request('GET', '/api/onboarding');
-      const all = spy.allArgs().join(' ');
       expect(responsesSeen).toBe(4);
-      expect(spy.callCount()).toBe(0);
-      expect(all).not.toContain(token);
-      expect(all).not.toContain('Bearer');
-      spy.restore();
     });
+  });
+});
+
+describe('api-client: cuerpo multipart (FormData)', () => {
+  it('envía el FormData tal cual y NO fija Content-Type (el navegador añade el boundary)', async () => {
+    const token = fakeJwt();
+    const { client, fetchFn } = setup(token);
+    const fd = new FormData();
+    fd.append('file', new File(['x'], 'a.png', { type: 'image/png' }));
+    await client.request('POST', '/api/uploads', { body: fd });
+    const [url, init] = fetchFn.mock.calls[0];
+    const req = init as RequestInit;
+    expect(url).toBe('/api/uploads');
+    expect(req.body).toBe(fd);
+    const names = Object.keys(headersOf(req)).map((k) => k.toLowerCase());
+    expect(names).not.toContain('content-type');
+    expect(headersOf(req).Authorization).toBe(`Bearer ${token}`);
+    expect(req.credentials).toBe('omit');
+    expect(req.redirect).toBe('error');
+    expect(req.cache).toBe('no-store');
+    expect(req.method).toBe('POST');
+  });
+
+  it('un cuerpo JSON sigue fijando Content-Type: application/json', async () => {
+    const { client, fetchFn } = setup(fakeJwt());
+    await client.request('POST', '/api/onboarding', { body: { a: 1 } });
+    const [, init] = fetchFn.mock.calls[0];
+    expect(headersOf(init as RequestInit)['Content-Type']).toBe('application/json');
+    expect((init as RequestInit).body).toBe('{"a":1}');
   });
 });

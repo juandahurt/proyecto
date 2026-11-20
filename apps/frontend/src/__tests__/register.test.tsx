@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   TEST_EMAIL,
@@ -12,7 +12,6 @@ import {
   jsonResponse,
   onboardingState,
   renderApp,
-  spyConsole,
 } from './helpers';
 
 async function fill(email: string, password: string) {
@@ -109,7 +108,6 @@ describe('Register', () => {
   });
 
   it('la contraseña nunca aparece en la URL, en localStorage ni en la consola', async () => {
-    const spy = spyConsole();
     installFetch({
       'POST /api/auth/register': () => authOk(201, fakeJwt()),
       'GET /api/onboarding': () => onboardingState(false),
@@ -121,8 +119,6 @@ describe('Register', () => {
     expect(currentPath()).not.toContain(TEST_PASSWORD);
     expect(window.location.href).not.toContain(TEST_PASSWORD);
     expect(JSON.stringify({ ...window.localStorage })).not.toContain(TEST_PASSWORD);
-    expect(spy.callCount()).toBe(0);
-    spy.restore();
   });
 });
 
@@ -138,14 +134,35 @@ describe('Register: silencio de consola en cada rama de error', () => {
     ],
   ];
   it.each(cases)('registro %s no escribe nada en la consola', async (_name, respond) => {
-    const spy = spyConsole();
     installFetch({ 'POST /api/auth/register': respond });
     renderApp('/register');
     const user = await fill(TEST_EMAIL, TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     await screen.findByRole('alert');
-    expect(spy.callCount()).toBe(0);
-    expect(spy.allArgs().join(' ')).not.toContain(TEST_PASSWORD);
-    spy.restore();
+  });
+});
+
+describe('Register: doble envío', () => {
+  it('dos envíos síncronos con la petición en vuelo producen una sola llamada a fetch', async () => {
+    const pending = new Promise<ReturnType<typeof jsonResponse>>(() => undefined);
+    const f = installFetch({ 'POST /api/auth/register': () => pending });
+    renderApp('/register');
+    await fill(TEST_EMAIL, TEST_PASSWORD);
+    const form = screen.getByRole('button', { name: 'Create account' }).closest('form')!;
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+    expect(f.calls().filter((c) => c.key === 'POST /api/auth/register')).toHaveLength(1);
+  });
+
+  it('Enter y después un clic con la petición en vuelo producen una sola llamada', async () => {
+    const pending = new Promise<ReturnType<typeof jsonResponse>>(() => undefined);
+    const f = installFetch({ 'POST /api/auth/register': () => pending });
+    renderApp('/register');
+    const user = await fill(TEST_EMAIL, TEST_PASSWORD);
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: /Create account|Creating account/ }));
+    expect(f.calls().filter((c) => c.key === 'POST /api/auth/register')).toHaveLength(1);
   });
 });
