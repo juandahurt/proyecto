@@ -4,6 +4,24 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 ## Abiertas
 
+### C-85 — Cobertura de branches de `delete-user-data.ts` bajo el floor (57,14% < 75%)
+
+**Origen:** orquestador, al verificar u9-T02 (2026-11-20). `apps/ingestion-service/src/handlers/delete-user-data.ts` está en 57,14% de cobertura de branches, por debajo del floor de 75% de `handlers/`. Preexistente en `main`, no tocado por el diff de u9-T02 (confirmado: el archivo no aparece en `git diff main...HEAD` de esa tarea). El script de CA-11/CA-13 de varias tareas pasa igual porque evalúa el bucket completo salvo que se aísle por archivo.
+
+**Qué sería:** una tarea chica que añada los casos de rama que faltan en `delete-user-data.ts` (fallos parciales del cascade, probablemente) hasta llegar a 75%.
+
+### C-86 — El script `test` de `apps/frontend` fija `--coverage`, rompe ejecuciones filtradas por patrón
+
+**Origen:** orquestador y codificador, al verificar u9-T02 (2026-11-20). `apps/frontend/package.json` define `test` con `--coverage` fijo; al correr `npm test -w apps/frontend -- --testPathPattern=<algo>`, Jest evalúa los coverage thresholds globales sobre el subconjunto filtrado y falla aunque todos los tests pasen. Reproducido también en `main` sin relación con ninguna tarea reciente.
+
+**Qué sería:** mover `--coverage` a un script aparte (`test:coverage`) y dejar `test` sin umbrales fijos para que un CA pueda filtrar por patrón sin un falso negativo.
+
+### C-87 — `FREE_TIER_LIMIT` hardcodeado en `identity-service`, sin override por entorno
+
+**Origen:** codificador de u9-T02 (2026-11-20). El límite de 10 subidas/mes está hardcodeado en `identity-service` desde u9-T01, sin una variable de entorno que permita bajarlo para pruebas. Impidió verificar en el cluster real el camino 402 (agotar el límite hasta 0) sin tocar código de producción; ese camino quedó cubierto solo por test automatizado (CA-4 de u9-T02).
+
+**Qué sería:** exponer `FREE_TIER_LIMIT` como variable de entorno con el mismo valor por defecto (10), documentada en `k8s/identity/configmap.yaml`, para que un ambiente de prueba pueda bajarla sin cambiar código.
+
 ### C-84 — Pantalla real de política de datos (`/policy`)
 
 **Origen:** orquestador, al redactar u0-T05. `GET /api/policy` existe en trust-service desde u12 y siempre devolvió `200` con el texto de la política, pero el frontend nunca tuvo una pantalla que lo leyera. u0-T05 deja `/policy` como cascarón "coming soon" enlazado desde Settings (decisión del humano, 2026-11-20): cumple el enlace de AC-12.1 ("alcanzable en ≤2 clics") pero no el contenido ("encuentra una declaración clara...").
@@ -439,6 +457,10 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Qué sería:** si progress-service alguna vez persiste datos propios (caché, snapshot), construir el endpoint y añadirlo a la cascada de `trust-service`.
 
 ## Cerradas
+
+### C-76 — Nadie incrementa el contador de subidas ni bloquea en 0 (AC-9.2 sin implementar)
+
+**Cerrada por u9-T02 (PR #30, `cf9f100`):** `ingestion-service` consulta `GET /api/users/me/limits` antes de procesar una subida (402 en 0, fail-open si identity está caído) e incrementa el contador tras cada crítica `ready` — `low_confidence` queda fuera por decisión del humano (2026-11-20), que restringe el alcance original de FR-9.1/AC-3.3 a solo críticas útiles. Fusionada **sin ronda de revisor**; verificado por el orquestador con `curl` real contra el cluster: `uploadsRemaining` bajó de 10 a 9 tras una subida real. Deja abiertas C-85 (cobertura de `delete-user-data.ts`), C-86 (script de test de frontend) y C-87 (`FREE_TIER_LIMIT` sin override).
 
 ### C-75 — Espía de consola global en los tests del frontend
 
