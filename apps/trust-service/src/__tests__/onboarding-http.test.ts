@@ -17,6 +17,8 @@ describe('Onboarding HTTP handlers', () => {
 
   beforeAll(() => {
     process.env.JWT_SECRET = TEST_SECRET;
+    process.env.INGESTION_URL = 'http://ingestion-service:3200';
+    process.env.IDENTITY_URL = 'http://identity-service:3100';
   });
 
   beforeEach(() => {
