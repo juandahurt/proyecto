@@ -104,6 +104,11 @@ export const UploadListItemSchema = z.object({
   /** 5 scores en ready (orden por categoryId); vacío en low_confidence. */
   scores: z.array(CategoryCritiqueSchema.pick({ categoryId: true, score: true })),
   fallbackReason: UploadResultSchema.shape.data.shape.fallbackReason,
+  /**
+   * Ruta relativa firmada (válida 15 minutos) que sirve la miniatura: /api/uploads/<id>/thumbnail?exp=&sig=.
+   * Opcional por si el blob no existiera (hoy siempre se firma, igual que en el detalle — u0-T03/C-78).
+   */
+  thumbnailUrl: z.string().min(1).optional(),
 });
 
 export type UploadListItem = z.infer<typeof UploadListItemSchema>;

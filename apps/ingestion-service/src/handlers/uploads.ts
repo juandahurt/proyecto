@@ -243,6 +243,12 @@ export function createUploadsRouter({
           scores: r.scores,
         };
         if (r.fallbackReason) item.fallbackReason = r.fallbackReason;
+        // Firmada igual que en el detalle, sin distinguir ready de low_confidence (u0-T03/C-78).
+        item.thumbnailUrl = signThumbnailUrl({
+          uploadId: r.uploadId,
+          key: signingKey,
+          nowMs: now(),
+        });
         return item;
       });
       const body = { data: { items }, error: null, status: 200 } satisfies UploadList;
