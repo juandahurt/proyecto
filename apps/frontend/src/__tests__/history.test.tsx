@@ -109,4 +109,13 @@ describe('History — tabla (US-5)', () => {
     await screen.findByRole('heading', { name: 'Log in' });
     expect(currentPath()).toBe('/login');
   });
+
+  it('marcador de tendencias deferido, sin gráficos ni placeholders de categoría', async () => {
+    setupApp('/history', { 'GET /api/uploads': () => listOk([READY_ITEM]) });
+    expect(
+      await screen.findByText('Progress trends — coming in a future update')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('figure')).toBeNull();
+    expect(document.querySelector('svg')).toBeNull();
+  });
 });

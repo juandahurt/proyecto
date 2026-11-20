@@ -173,8 +173,10 @@ export function makeFile(type: string, bytes = 100, name = 'photo.jpg'): File {
 
 export const MIB = 1024 * 1024;
 
+export type AppEntry = string | { pathname: string; state?: unknown };
+
 /** Siembra una sesión y pinta la app con las lecturas habituales; `routes` pisa cualquiera. */
-export function setupApp(path: string, routes: Record<string, Handler> = {}) {
+export function setupApp(path: AppEntry, routes: Record<string, Handler> = {}) {
   const token = fakeJwt();
   window.localStorage.setItem(TOKEN_KEY, token);
   const f = installFetch({
@@ -206,7 +208,7 @@ function LocationProbe() {
 
 const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true } as const;
 
-export function renderApp(path: string) {
+export function renderApp(path: AppEntry) {
   return render(
     <MemoryRouter initialEntries={[path]} future={ROUTER_FUTURE}>
       <App />

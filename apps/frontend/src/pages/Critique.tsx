@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { getUpload, type UploadDetailData } from '../api/uploads';
 import { useAuth } from '../auth/AuthContext';
 import { ScoreBadge } from '../components/ScoreBadge';
@@ -87,11 +87,15 @@ function LowConfidenceBody({ reason }: { reason: UploadDetailData['fallbackReaso
 export default function Critique() {
   const { uploadId = '' } = useParams();
   const { api } = useAuth();
+  const location = useLocation();
   const valid = UUID.test(uploadId);
   const [loaded, setLoaded] = useState<View>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const view: View = valid ? loaded : NOT_FOUND;
+  // Si se llegó navegando desde /history (state.from), «← Back» vuelve ahí; si no, al flujo de subida (u0-T02).
+  const backTo =
+    (location.state as { from?: string } | null)?.from === 'history' ? '/history' : '/upload';
 
   useEffect(() => {
     if (!valid) return;
@@ -131,7 +135,7 @@ export default function Critique() {
           )}
         </div>
         {view.kind === 'loaded' && (
-          <Link to="/upload" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+          <Link to={backTo} className="text-sm font-medium text-blue-600 hover:text-blue-700">
             ← Back
           </Link>
         )}
