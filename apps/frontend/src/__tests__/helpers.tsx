@@ -159,6 +159,7 @@ export function listItem(n: number, over: Record<string, unknown> = {}) {
     confidence: 'HIGH',
     timestamp: `2026-09-${String(10 + n).padStart(2, '0')}T10:00:00.000Z`,
     scores: [],
+    thumbnailUrl: undefined as string | undefined,
     ...over,
   };
 }
