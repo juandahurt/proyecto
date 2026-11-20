@@ -125,3 +125,23 @@ describe('Settings — confirmación de dos pasos para borrar el historial (US-1
     expect(countOf(f, 'DELETE /api/history')).toBe(1);
   });
 });
+
+describe('Settings — enlace a la política de datos (AC-12.1)', () => {
+  it('Settings tiene un enlace "Data Policy" que navega a /policy', async () => {
+    const user = userEvent.setup();
+    setupApp('/settings', {});
+    const link = await screen.findByRole('link', { name: 'Data Policy' });
+    expect(link).toHaveAttribute('href', '/policy');
+    await user.click(link);
+    await waitFor(() => expect(currentPath()).toBe('/policy'));
+  });
+
+  it('/policy pinta un h1 y "Coming soon." sin llamar a GET /api/policy', async () => {
+    const { f } = setupApp('/policy', {});
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Data Policy' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Coming soon.')).toBeInTheDocument();
+    expect(countOf(f, 'GET /api/policy')).toBe(0);
+  });
+});

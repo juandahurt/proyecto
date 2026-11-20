@@ -13,6 +13,7 @@ import Critique from './pages/Critique';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import Onboarding from './pages/Onboarding';
+import Policy from './pages/Policy';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
 import Trends from './pages/Trends';
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="/trends" element={<Trends />} />
               <Route path="/history" element={<History />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/policy" element={<Policy />} />
             </Route>
           </Route>
         </Route>

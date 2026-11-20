@@ -21,6 +21,7 @@ describe('routes y guard', () => {
     '/',
     '/history',
     '/settings',
+    '/policy',
     `/uploads/${UPLOAD_ID}`,
     '/upgrade',
   ])('sin token %s redirige a /login sin llamar a ninguna API', async (path) => {
@@ -150,7 +151,7 @@ describe('routes y guard', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'My History' })).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Settings' }));
     expect(currentPath()).toBe('/settings');
-    expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
   });
 
   it('Log out borra el token y navega a /login; después / no llama a la API', async () => {
