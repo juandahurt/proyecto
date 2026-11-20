@@ -22,7 +22,7 @@ spec:
         runAsGroup: 101
       containers:
         - name: frontend
-          image: frontend:u0-T04
+          image: frontend:u0-T05
           imagePullPolicy: Never
           ports:
             - name: http
