@@ -354,12 +354,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** comparar sin distinguir mayúsculas, buscar cada segmento del JWT, espiar también `stderr`, añadir `expect(res.status)` por escenario y extraer un helper común de silencio de logs entre `history.test.ts` y `trends.test.ts`. Solo tests; no cambia la imagen.
 
-### C-68 — Pantalla de error de onboarding sin salida (cerrar sesión)
-
-**Origen:** revisor de u0-T01 ronda 1 (F-08, amarillo). Con token válido y trust en 5xx, la guarda solo ofrece Retry y ni `/login` ni `/register` dejan cerrar sesión.
-
-**Qué sería:** añadir «Log out» a la pantalla de error de la guarda, con su test. Se puede hacer en u0-T02 (que ya toca el cascarón).
-
 ### C-69 — Proxy de desarrollo de Vite con puertos incrustados e incompleto
 
 **Origen:** revisor de u0-T01 ronda 1 (F-07, amarillo). `vite.config.ts` apunta a `localhost:31xx-34xx` y le faltan `/api/policy` y `/api/history`, que nginx sí enruta.
@@ -395,12 +389,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Origen:** revisor de u0-T01 ronda 2 (F-12, F-13, F-14, amarillos). (a) `Range: bytes=999999999-` sobre un asset real da 416 con `immutable`; los navegadores no cachean un 416, riesgo nulo. (b) La sección de la ronda 1 de la bitácora conserva títulos duplicados o vacíos, comandos de CA-15 parafraseados y el `wc -l` antiguo de CA-11. (c) El mensaje genérico de `credentials.ts:31` no es una constante exportada.
 
 **Qué sería:** (a) acotar `immutable` a 200/206/304; (b) limpiar la bitácora; (c) exportar la constante. Todas triviales.
-
-### C-75 — Espía de consola global en los tests del frontend (F-10 y F-11 de u0-T01, abiertos)
-
-**Origen:** revisor de u0-T01 ronda 2 (F-10 ROJO y F-11 NARANJA). **Abiertos por decisión del humano** (no hubo ronda 3; la tarea se dejó con veredicto NO-VERDE). El código no escribe nada en la consola; falta la prueba que lo garantice: sobreviven con 102/102 verde N16/N17 (JWT en consola al terminar el onboarding) y N03, N04, N08, N10, N11, N13, N14 y N15 (rechazo en el cliente de login y registro, `token-store`, `logout`, error de `GET /api/onboarding`, 401 de onboarding).
-
-**Qué sería:** un espía de consola global en `helpers.tsx`, con un `afterEach` que afirme cero llamadas a `console.*` en **todos** los tests salvo los que lo desactiven con justificación; rojo primero con esas mutaciones. Solo tests; no cambia la imagen. Lo más natural es hacerlo al inicio de u0-T02, que ya toca esas pantallas.
 
 ### C-76 — Nadie incrementa el contador de subidas ni bloquea en 0 (AC-9.2 sin implementar)
 
@@ -445,6 +433,14 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 **Qué sería:** si algún día el frontend tiene código de Node (SSR) o timers largos, espiar también `process.stdout/stderr` y vaciar los timers pendientes en un `afterAll`. Hoy no hay ni lo uno ni lo otro en el MVP.
 
 ## Cerradas
+
+### C-75 — Espía de consola global en los tests del frontend
+
+**Cerrada por u0-T02 (PR #25, `0d2a8d5`):** `jest.setup.ts` instala una guarda que sustituye todas las funciones de `console` al cargar y hace fallar cualquier test que escriba en la consola. Fusionada con la ronda 3 **sin revisar** (la clase F-07 se corrigió pero ningún revisor lo confirmó). Quedan C-82 (`process.stdout`, llamadas tras el desmontaje) y F-09 (zona horaria simulada solo para `Intl`).
+
+### C-68 — Pantalla de error de onboarding sin salida
+
+**Cerrada por u0-T02 (PR #25, `0d2a8d5`):** «Log out» junto a «Retry» en la pantalla de error de la guarda, con su test y los de doble envío.
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
 
