@@ -1,31 +1,48 @@
 /**
  * Guarda global de consola (C-75). Se instala una vez al cargar `jest.setup.ts`, por lo que corre en
- * TODOS los archivos de test y nunca se restaura. Registra cada llamada a la consola y, al terminar
- * cada test, falla si hubo alguna. Una llamada diferida (`setTimeout`) se atribuye al test que esté
- * corriendo cuando se dispara; una llamada entre tests o al cargar un módulo falla el test siguiente. Un test que necesite escribir en la consola
- * debe declararlo con `allowConsole(razon)`; el valor por defecto es el silencio total.
+ * TODOS los archivos de test y nunca se restaura. Sustituye TODAS las propiedades función de
+ * `console` (no una lista fija), registra cada llamada y, al terminar cada test, falla si hubo
+ * alguna. Un test que necesite escribir en la consola debe declararlo con `allowConsole(razon)`; el
+ * valor por defecto es el silencio total.
+ *
+ * Límites conocidos: una llamada diferida (`setTimeout`) se atribuye al test que esté corriendo
+ * cuando se dispara; una llamada entre tests o al cargar un módulo falla el test siguiente; pero
+ * una llamada que dispara DESPUÉS de que Jest desmonta el entorno (p. ej. un `setTimeout` de 1 s en
+ * el último test) se pierde en silencio: es una propiedad de Jest, no se intenta resolver. Tampoco
+ * se cubren `process.stdout.write` ni `Object.getPrototypeOf(console).error.call(...)` (C-82).
  */
 
-export const GUARDED_METHODS = [
-  'log',
-  'info',
-  'warn',
-  'error',
-  'debug',
-  'trace',
-  'dir',
-  'table',
-] as const;
-export type GuardedMethod = (typeof GUARDED_METHODS)[number];
+type ConsoleLike = Record<string, (...args: unknown[]) => void>;
+
+/** Internos de Jest que no escriben y que el ejecutor llama por su cuenta: no se sustituyen. */
+const NOT_GUARDED = new Set(['getBuffer']);
+
+/**
+ * Todas las propiedades función de `console` (propias y de su cadena de prototipos). Se excluyen
+ * `constructor`, lo heredado de `Object.prototype`, el constructor `Console` y los internos con `_`.
+ */
+export function consoleFunctionNames(): string[] {
+  const objectProto = new Set(Object.getOwnPropertyNames(Object.prototype));
+  const target = console as unknown as Record<string, unknown>;
+  const names = new Set<string>();
+  let obj: object | null = console;
+  while (obj && obj !== Object.prototype) {
+    for (const key of Object.getOwnPropertyNames(obj)) {
+      if (objectProto.has(key) || NOT_GUARDED.has(key)) continue;
+      if (key.startsWith('_') || /^[A-Z]/.test(key)) continue;
+      if (typeof target[key] === 'function') names.add(key);
+    }
+    obj = Object.getPrototypeOf(obj);
+  }
+  return [...names].sort();
+}
 
 interface RecordedCall {
-  method: GuardedMethod;
+  method: string;
   args: unknown[];
 }
 
-type ConsoleLike = Record<GuardedMethod, (...args: unknown[]) => void>;
-
-let originals: Partial<ConsoleLike> | null = null;
+let originals: ConsoleLike | null = null;
 let calls: RecordedCall[] = [];
 let allowed: string | null = null;
 
@@ -48,12 +65,12 @@ export function installConsoleGuard(): void {
   if (originals === null) {
     originals = {};
     const target = console as unknown as ConsoleLike;
-    for (const method of GUARDED_METHODS) {
+    for (const method of consoleFunctionNames()) {
       originals[method] = target[method];
     }
   }
   const target = console as unknown as ConsoleLike;
-  for (const method of GUARDED_METHODS) {
+  for (const method of Object.keys(originals)) {
     target[method] = (...args: unknown[]) => {
       calls.push({ method, args });
     };
@@ -70,7 +87,7 @@ export function resetConsoleGuard(): void {
 export function restoreConsole(): void {
   if (originals === null) return;
   const target = console as unknown as ConsoleLike;
-  for (const method of GUARDED_METHODS) {
+  for (const method of Object.keys(originals)) {
     const original = originals[method];
     if (original) target[method] = original;
   }
