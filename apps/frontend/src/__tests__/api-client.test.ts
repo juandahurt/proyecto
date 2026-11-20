@@ -342,3 +342,18 @@ describe('api-client: cuerpo multipart (FormData)', () => {
     expect((init as RequestInit).body).toBe('{"a":1}');
   });
 });
+
+describe('api-client: método DELETE', () => {
+  it('serializa el body como JSON, manda Content-Type, Authorization y usa el verbo DELETE', async () => {
+    const token = fakeJwt();
+    const { client, fetchFn } = setup(token);
+    await client.request('DELETE', '/api/history', { body: { confirmation: 'DELETE' } });
+    const [url, init] = fetchFn.mock.calls[0];
+    const req = init as RequestInit;
+    expect(url).toBe('/api/history');
+    expect(req.method).toBe('DELETE');
+    expect(req.body).toBe('{"confirmation":"DELETE"}');
+    expect(headersOf(req)['Content-Type']).toBe('application/json');
+    expect(headersOf(req).Authorization).toBe(`Bearer ${token}`);
+  });
+});
