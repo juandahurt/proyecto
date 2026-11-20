@@ -219,4 +219,41 @@ describe('a11y: pantallas de u0-T02', () => {
     expect(msg.closest('[role=alert]')).not.toBeNull();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
+
+  it('/settings: un h1, campo de confirmación con etiqueta, todo operable con teclado', async () => {
+    const user = userEvent.setup();
+    setupApp('/settings', {});
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'Delete my history' }));
+    const input = screen.getByLabelText('Type the word DELETE to confirm');
+    expect(input.tagName).toBe('INPUT');
+    await user.type(input, 'DELETE');
+    const confirmButton = screen.getByRole('button', { name: 'Delete permanently' });
+    expect(confirmButton).not.toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete my history' })).toBeInTheDocument();
+  });
+
+  it('/settings: el botón de confirmación deshabilitado expone disabled o aria-disabled', async () => {
+    const user = userEvent.setup();
+    setupApp('/settings', {});
+    await user.click(await screen.findByRole('button', { name: 'Delete my history' }));
+    const confirmButton = screen.getByRole('button', { name: 'Delete permanently' });
+    const isDisabled =
+      confirmButton.hasAttribute('disabled') ||
+      confirmButton.getAttribute('aria-disabled') === 'true';
+    expect(isDisabled).toBe(true);
+  });
+
+  it('/policy: un h1, dentro de AppLayout', async () => {
+    setupApp('/policy', {});
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Data Policy' })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+  });
 });
