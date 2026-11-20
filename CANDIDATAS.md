@@ -438,6 +438,12 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** `MAX_UPLOAD_BYTES` y `ACCEPTED_IMAGE_MIME_TYPES` en `packages/shared-types` y que ambos lados los importen. Cambia `shared-types` (reconstruir ingestion y frontend).
 
+### C-82 — La guarda de consola del frontend no cubre `process.stdout.write` ni llamadas posteriores al desmontaje
+
+**Origen:** revisor de u0-T02 ronda 2 (F-07, parte rechazada). (a) `process.stdout.write(token)` y `Object.getPrototypeOf(console).error.call(…)` esquivan la guarda; el primero es código de Node y el segundo es rebuscado. (b) Una llamada diferida que dispara después de que Jest desmonta el entorno (p. ej. `setTimeout` de 1 s) se pierde en silencio: ni escribe ni falla.
+
+**Qué sería:** si algún día el frontend tiene código de Node (SSR) o timers largos, espiar también `process.stdout/stderr` y vaciar los timers pendientes en un `afterAll`. Hoy no hay ni lo uno ni lo otro en el MVP.
+
 ## Cerradas
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
