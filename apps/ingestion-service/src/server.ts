@@ -8,6 +8,7 @@ import { createDatabase } from './service/database';
 import { createUploadRepository, UploadRepository } from './service/upload-repository';
 import { callClaudeVision } from './service/claude-client';
 import { createThumbnailHandler } from './handlers/thumbnail';
+import { createDeleteUserDataRouter } from './handlers/delete-user-data';
 
 const MIN_SIGNING_KEY_LENGTH = 32;
 
@@ -63,6 +64,9 @@ export function createApp(deps?: AppDeps): Application {
     requireAuth,
     createUploadsRouter({ repo, claudeClient, signingKey, now })
   );
+
+  // /api/internal — network-trusted, sin requireAuth (mismo patrón que increment-counter)
+  app.use('/api/internal', createDeleteUserDataRouter({ repo }));
 
   // Fallback 404 handler
   app.use((_req: Request, res: Response) => {

@@ -71,6 +71,13 @@ export interface UploadRepository {
   getCategories(uploadId: string): CategoryCritique[];
   /** Uploads del usuario con crítica persistida, más reciente primero (u5-T01). */
   listByUser(userId: string): UploadListRecord[];
+  /**
+   * Borra todas las filas de category_critiques y uploads de un usuario en una
+   * sola transacción (u13-T01). Devuelve los storedFilename de los uploads
+   * borrados para que el llamador limpie los blobs fuera de la transacción.
+   * Idempotente: usuario sin uploads devuelve un array vacío.
+   */
+  deleteByUserId(userId: string): string[];
 }
 
 /**
@@ -146,6 +153,26 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
       fallbackReason: h.fallback_reason,
       scores: byUpload.get(h.upload_id) ?? [],
     }));
+  });
+
+  const selectUploadIdsAndFilesStmt = db.prepare<[string]>(
+    'SELECT upload_id, stored_filename FROM uploads WHERE user_id = ?'
+  );
+  const deleteCritiquesByUserStmt = db.prepare<[string]>(
+    'DELETE FROM category_critiques WHERE upload_id IN (SELECT upload_id FROM uploads WHERE user_id = ?)'
+  );
+  const deleteUploadsByUserStmt = db.prepare<[string]>('DELETE FROM uploads WHERE user_id = ?');
+
+  // Orden explícito (sin ON DELETE CASCADE en el schema): category_critiques primero,
+  // uploads después, ambas dentro de la misma transacción.
+  const deleteByUserTx = db.transaction((userId: string): string[] => {
+    const rows = selectUploadIdsAndFilesStmt.all(userId) as {
+      upload_id: string;
+      stored_filename: string;
+    }[];
+    deleteCritiquesByUserStmt.run(userId);
+    deleteUploadsByUserStmt.run(userId);
+    return rows.map((r) => r.stored_filename);
   });
 
   const saveTx = db.transaction((uploadId: string, outcome: CritiqueOutcome) => {
@@ -260,6 +287,10 @@ export function createUploadRepository(db: Database.Database): UploadRepository 
 
     listByUser(userId: string): UploadListRecord[] {
       return listTx(userId);
+    },
+
+    deleteByUserId(userId: string): string[] {
+      return deleteByUserTx(userId);
     },
 
     getDetail(uploadId: string): UploadDetailRecord | null {
