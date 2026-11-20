@@ -10,6 +10,7 @@ import { cn } from '../lib/utils';
 const LINKS = [
   { to: '/upload', label: 'Upload' },
   { to: '/history', label: 'My History' },
+  { to: '/trends', label: 'Progress Trends' },
   { to: '/settings', label: 'Settings' },
 ];
 

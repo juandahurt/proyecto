@@ -147,8 +147,10 @@ export default function History() {
         </>
       )}
 
-      <div className="border-t border-gray-200 pt-4 text-sm text-gray-500">
-        Progress trends — coming in a future update
+      <div className="border-t border-gray-200 pt-4">
+        <Link to="/trends" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+          Progress trends
+        </Link>
       </div>
     </section>
   );

@@ -196,7 +196,7 @@ describe('routes nuevas (u0-T02)', () => {
     }
   );
 
-  it('/upgrade con onboarding completo muestra un h1 y «Coming soon.» dentro de AppLayout', async () => {
+  it('/upgrade con onboarding completo muestra un h1 y el flujo real dentro de AppLayout', async () => {
     seed();
     installFetch({
       'GET /api/onboarding': () => onboardingState(true),
@@ -205,7 +205,7 @@ describe('routes nuevas (u0-T02)', () => {
     renderApp('/upgrade');
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByText('Coming soon.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Upgrade to Paid' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 
