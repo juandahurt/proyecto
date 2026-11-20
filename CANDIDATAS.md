@@ -402,12 +402,6 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 
 **Qué sería:** definir el endpoint (¿ingestion?), `shared-types`, persistencia y luego los botones.
 
-### C-78 — El listado de uploads no trae miniatura ni nombre
-
-**Origen:** orquestador, al redactar u0-T02. `GET /api/uploads` devuelve `uploadId`, `status`, `confidence`, `timestamp`, `scores` y `fallbackReason`; los mockups 2A y 4 muestran miniatura y nombre («hand study»). El servidor no guarda nombres (regla: nunca usar el del cliente) y la miniatura firmada solo sale en el detalle. u0-T02 muestra fecha, estado y «View».
-
-**Qué sería:** decidir si el listado incluye `thumbnailUrl` firmada (una firma por fila) y si se admite un título editable. Afecta también a u0-T03 (historial).
-
 ### C-79 — Dependencias de `react-dropzone` exigen Node >= 22 y la imagen de build usa Node 20
 
 **Origen:** codificador de u0-T02 (ATENCIÓN 1). `react-dropzone`, `attr-accept` y `file-selector` declaran `engines.node >= 22`; `apps/frontend/Dockerfile` construye con `node:20-slim`. `docker build` y `vite build` terminan bien, pero npm puede avisar y una versión futura podría romper.
@@ -441,6 +435,10 @@ Trabajo real que salió del alcance de alguna tarea y que **no se hizo** en esa 
 ### C-68 — Pantalla de error de onboarding sin salida
 
 **Cerrada por u0-T02 (PR #25, `0d2a8d5`):** «Log out» junto a «Retry» en la pantalla de error de la guarda, con su test y los de doble envío.
+
+### C-78 — El listado de uploads no trae miniatura ni nombre
+
+**Cerrada por u0-T03 (PR #26, `01d8223`):** `GET /api/uploads` ahora firma `thumbnailUrl` por item, igual que el detalle; la tabla de `/history` la pinta con la misma guardia de prefijo seguro que la crítica. Fusionada **sin ronda de revisor** (el revisor de ronda 1 fue detenido antes de informar; el humano decidió fusionar sin relanzarlo). El nombre de archivo sigue sin exponerse (regla vigente: nunca el del cliente).
 
 ### C-56 — u7 debe conectar `loadTrendConfig(process.env)` al arranque
 
