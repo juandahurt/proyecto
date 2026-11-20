@@ -218,7 +218,7 @@ Cada uno con **su comando**. El revisor los corre él mismo. `$WORK` es un subdi
   curl -s -o /dev/null -w "login-sigue-activo %{http_code}\n" -X POST http://localhost:3500/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"$E\",\"password\":\"$P\"}"
   ```
 
-  Esperado: `register 201`, `upload 202`; `limits` inicial con `uploadsRemaining: 9`; la confirmación inválida da `400`; `delete 204`; `lista-tras-borrado 200` con `items: []` (comprobar el cuerpo, no solo el status); `limits` final con `uploadsRemaining: 10` (AC-13.3); `login-sigue-activo 201` falla por supuesto si reintenta registro — usa login, no register, y espera `200` (la cuenta sigue activa, AC-13.3). Cierra el port-forward y deja constancia del email `*.test` creado. Ningún JWT ni contraseña en el informe ni en la bitácora.
+  Esperado: `register 201`, `upload 202`; `limits` inicial con `uploadsRemaining: 10` (el contador no está conectado todavía — C-76/u9-T02, fuera del alcance de esta tarea — así que ninguna subida lo decrementa: `limits` da `10` tanto antes como después de subir y de borrar; AC-13.3 se prueba de verdad en **CA-4**, directamente sobre el repositorio del contador en BD, partiendo de un valor realista como `count: 7`); la confirmación inválida da `400`; `delete 204`; `lista-tras-borrado 200` con `items: []` (comprobar el cuerpo, no solo el status); `login-sigue-activo 200` (la cuenta sigue activa, AC-13.3 — usa `/api/auth/login`, no `/register`, que daría `409` por el email ya existente). Cierra el port-forward y deja constancia del email `*.test` creado. Ningún JWT ni contraseña en el informe ni en la bitácora.
 
 - [ ] **CA-14** — **Sin secretos en el diff, el árbol ni el bundle.**
 
