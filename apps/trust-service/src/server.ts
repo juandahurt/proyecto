@@ -6,11 +6,25 @@ import { createPolicyRouter } from './handlers/policy';
 import { createDatabase } from './service/database';
 import { createOnboardingRepository, OnboardingRepository } from './service/onboarding-repository';
 import { requireAuth } from '@proyecto/auth-middleware';
+import { createHistoryRouter } from './handlers/history';
+import { FetchFn } from './service/ingestion-client';
+
+const DEFAULT_TIMEOUT_MS = 5000;
+
+function readTimeout(name: string): number {
+  const value = Number.parseInt(process.env[name] ?? '', 10);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+}
 
 export interface AppDeps {
   db?: Database.Database;
   repo?: OnboardingRepository;
   policyContent?: string;
+  fetchFn?: FetchFn;
+  ingestionUrl?: string;
+  identityUrl?: string;
+  ingestionTimeoutMs?: number;
+  identityTimeoutMs?: number;
 }
 
 /**
@@ -37,6 +51,30 @@ export function createApp(deps?: AppDeps): Application {
 
   // GET /api/policy — política de datos estática, protegida por requireAuth
   app.use('/api/policy', requireAuth, createPolicyRouter({ policyContent: deps?.policyContent }));
+
+  // DELETE /api/history — orquesta la cascada best-effort hacia ingestion e identity
+  const ingestionUrl = deps?.ingestionUrl ?? process.env.INGESTION_URL;
+  if (!ingestionUrl) {
+    throw new Error('INGESTION_URL is required');
+  }
+  const identityUrl = deps?.identityUrl ?? process.env.IDENTITY_URL;
+  if (!identityUrl) {
+    throw new Error('IDENTITY_URL is required');
+  }
+  const ingestionTimeoutMs = deps?.ingestionTimeoutMs ?? readTimeout('INGESTION_TIMEOUT_MS');
+  const identityTimeoutMs = deps?.identityTimeoutMs ?? readTimeout('IDENTITY_TIMEOUT_MS');
+  const fetchFn = deps?.fetchFn ?? fetch;
+
+  app.use(
+    '/api/history',
+    createHistoryRouter({
+      fetchFn,
+      ingestionUrl,
+      identityUrl,
+      ingestionTimeoutMs,
+      identityTimeoutMs,
+    })
+  );
 
   // Fallback 404
   app.use((_req: Request, res: Response) => {

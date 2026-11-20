@@ -5,6 +5,7 @@ import { createAuthRouter } from './handlers/auth';
 import { createLimitsRouter } from './handlers/limits';
 import { createSubscribeRouter } from './handlers/subscribe';
 import { createIncrementCounterRouter } from './handlers/increment-counter';
+import { createResetCounterRouter } from './handlers/reset-counter';
 import { createDatabase } from './service/database';
 import { createUserRepository, UserRepository } from './service/user-repository';
 import {
@@ -40,6 +41,7 @@ export function createApp(deps?: AppDeps): Application {
   app.use('/api/users', createLimitsRouter({ counterRepo, subscriptionRepo }));
   app.use('/api/users', createSubscribeRouter({ counterRepo, subscriptionRepo }));
   app.use('/api/internal', createIncrementCounterRouter({ counterRepo }));
+  app.use('/api/internal', createResetCounterRouter({ counterRepo }));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ data: null, error: 'Not Found', status: 404 });

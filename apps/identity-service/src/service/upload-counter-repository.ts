@@ -3,6 +3,8 @@ import Database from 'better-sqlite3';
 export interface UploadCounterRepository {
   getForMonth(userId: string, yearMonth: string): number;
   incrementForMonth(userId: string, yearMonth: string): number;
+  /** Pone a 0 el contador de ese usuario+mes. Idempotente si no existía la fila. */
+  resetForMonth(userId: string, yearMonth: string): void;
 }
 
 interface CounterRow {
@@ -16,6 +18,10 @@ export function createUploadCounterRepository(db: Database.Database): UploadCoun
 
   const upsertStmt = db.prepare<[string, string], CounterRow>(
     'INSERT INTO upload_counters (user_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(user_id, year_month) DO UPDATE SET count = count + 1 RETURNING count'
+  );
+
+  const resetStmt = db.prepare<[string, string]>(
+    'INSERT INTO upload_counters (user_id, year_month, count) VALUES (?, ?, 0) ON CONFLICT(user_id, year_month) DO UPDATE SET count = 0'
   );
 
   return {
@@ -32,6 +38,10 @@ export function createUploadCounterRepository(db: Database.Database): UploadCoun
         );
       }
       return row.count;
+    },
+
+    resetForMonth(userId: string, yearMonth: string): void {
+      resetStmt.run(userId, yearMonth);
     },
   };
 }

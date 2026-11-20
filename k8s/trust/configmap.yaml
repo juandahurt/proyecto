@@ -8,3 +8,7 @@ data:
   PORT: '3300'
   NODE_ENV: 'production'
   DB_PATH: '/app/data/trust.db'
+  INGESTION_URL: 'http://ingestion-service:3200'
+  INGESTION_TIMEOUT_MS: '5000'
+  IDENTITY_URL: 'http://identity-service:3100'
+  IDENTITY_TIMEOUT_MS: '5000'
