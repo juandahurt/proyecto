@@ -68,7 +68,7 @@ describe('DELETE /api/internal/users/:userId/data — fallo de archivo no aborta
       return realUnlink(p);
     });
 
-    const app = createApp({ db, repo });
+    const app = createApp({ db, repo, identityUrl: 'http://identity-test.invalid' });
     const res = await request(app).delete(`/api/internal/users/${VALID_UUID}/data`);
 
     expect(res.status).toBe(204);
