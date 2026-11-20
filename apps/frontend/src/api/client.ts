@@ -25,7 +25,7 @@ export interface RequestOptions {
 
 export interface ApiClient {
   request<T = unknown>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'DELETE',
     path: string,
     options?: RequestOptions
   ): Promise<ApiResult<T>>;
@@ -59,7 +59,7 @@ function classify(status: number): ApiErrorKind {
 export function createApiClient(deps: ApiClientDeps): ApiClient {
   return {
     async request<T = unknown>(
-      method: 'GET' | 'POST',
+      method: 'GET' | 'POST' | 'DELETE',
       path: string,
       options: RequestOptions = {}
     ): Promise<ApiResult<T>> {
