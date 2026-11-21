@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { TrendChart } from '../components/TrendChart';
 
 type View = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; data: TrendsData };
 
@@ -58,9 +59,7 @@ function CategoryCard({ category }: { category: CategoryTrend }) {
             <Badge className={DIRECTION_CLASS[category.status]}>
               {DIRECTION_LABEL[category.status]}
             </Badge>
-            <p className="text-sm text-gray-700">
-              {category.trend.scoreHistory.map((p) => p.score).join(' → ')}
-            </p>
+            <TrendChart direction={category.status} scoreHistory={category.trend.scoreHistory} />
           </div>
         )}
     </article>
