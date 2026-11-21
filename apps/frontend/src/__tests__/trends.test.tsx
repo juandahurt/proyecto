@@ -95,10 +95,72 @@ describe('Trends — pantalla /trends, por valor', () => {
     expect(await screen.findByText('3 more uploads needed')).toBeInTheDocument();
   });
 
-  it('improving: badge Improving y scoreHistory en orden exacto', async () => {
+  it('improving: badge Improving y gráfico (no el texto plano antiguo)', async () => {
     setupApp('/trends', { 'GET /api/trends': () => trendsOk(ALL_STATUSES) });
     expect(await screen.findByText('Improving')).toBeInTheDocument();
-    expect(screen.getByText('62 → 68 → 74')).toBeInTheDocument();
+    const card = screen.getByText('LINE QUALITY').closest('article') as HTMLElement;
+    // El gráfico SVG de recharts reemplaza al texto plano, no lo complementa (decisión 2).
+    expect(within(card).getByTestId('trend-chart')).toBeInTheDocument();
+    expect(within(card).getByTestId('trend-chart').querySelector('svg')).toBeTruthy();
+    // El texto "62 → 68 → 74" sigue siendo recuperable UNA sola vez, como contenido accesible
+    // (decisión 5), no como el párrafo visible que existía antes de esta tarea.
+    const occurrences = within(card).getAllByText('62 → 68 → 74');
+    expect(occurrences).toHaveLength(1);
+    expect(occurrences[0]).toHaveClass('sr-only');
+  });
+
+  it('CA-2: solo improving/stagnating/worsening pintan el gráfico; locked e insufficient_data no', async () => {
+    setupApp('/trends', { 'GET /api/trends': () => trendsOk(ALL_STATUSES) });
+    await screen.findByText('COMPOSITION');
+    const lockedCard = screen.getByText('COMPOSITION').closest('article') as HTMLElement;
+    const insufficientCard = screen.getByText('PROPORTIONS').closest('article') as HTMLElement;
+    const improvingCard = screen.getByText('LINE QUALITY').closest('article') as HTMLElement;
+    const stagnatingCard = screen.getByText('VALUES (SHADING)').closest('article') as HTMLElement;
+    const worseningCard = screen.getByText('PERSPECTIVE').closest('article') as HTMLElement;
+
+    expect(within(lockedCard).queryByTestId('trend-chart')).toBeNull();
+    expect(within(insufficientCard).queryByTestId('trend-chart')).toBeNull();
+    expect(within(improvingCard).getByTestId('trend-chart')).toBeInTheDocument();
+    expect(within(stagnatingCard).getByTestId('trend-chart')).toBeInTheDocument();
+    expect(within(worseningCard).getByTestId('trend-chart')).toBeInTheDocument();
+  });
+
+  it('CA-3: color de la línea según dirección (stroke verde/gris/rojo, no los tres iguales)', async () => {
+    setupApp('/trends', { 'GET /api/trends': () => trendsOk(ALL_STATUSES) });
+    await screen.findByText('COMPOSITION');
+    const improvingCard = screen.getByText('LINE QUALITY').closest('article') as HTMLElement;
+    const stagnatingCard = screen.getByText('VALUES (SHADING)').closest('article') as HTMLElement;
+    const worseningCard = screen.getByText('PERSPECTIVE').closest('article') as HTMLElement;
+
+    const strokeOf = (card: HTMLElement) =>
+      card.querySelector('.recharts-line-curve')?.getAttribute('stroke');
+
+    const improvingStroke = strokeOf(improvingCard);
+    const stagnatingStroke = strokeOf(stagnatingCard);
+    const worseningStroke = strokeOf(worseningCard);
+
+    expect(improvingStroke).toBe('#16A34A'); // green-600
+    expect(stagnatingStroke).toBe('#6B7280'); // gray-500
+    expect(worseningStroke).toBe('#DC2626'); // red-600
+    expect(new Set([improvingStroke, stagnatingStroke, worseningStroke]).size).toBe(3);
+  });
+
+  it('CA-4 a11y: la serie sigue siendo legible sin ver el SVG (sr-only con el mismo contenido)', async () => {
+    setupApp('/trends', { 'GET /api/trends': () => trendsOk(ALL_STATUSES) });
+    await screen.findByText('COMPOSITION');
+    const improvingCard = screen.getByText('LINE QUALITY').closest('article') as HTMLElement;
+    const stagnatingCard = screen.getByText('VALUES (SHADING)').closest('article') as HTMLElement;
+    const worseningCard = screen.getByText('PERSPECTIVE').closest('article') as HTMLElement;
+
+    expect(within(improvingCard).getByText('62 → 68 → 74')).toBeInTheDocument();
+    expect(within(stagnatingCard).getByText('50 → 51')).toBeInTheDocument();
+    expect(within(worseningCard).getByText('80 → 70')).toBeInTheDocument();
+
+    // El SVG en sí no es el único portador del dato: lleva aria-hidden porque el texto ya lo cubre.
+    expect(within(improvingCard).getByTestId('trend-chart')).toHaveAttribute('aria-hidden', 'true');
+
+    // Un solo <h1> en toda la pantalla (sin duplicados por el gráfico).
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
   it('stagnating y worsening: badges con sus textos literales', async () => {
