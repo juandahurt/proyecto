@@ -80,19 +80,6 @@ fusionaron por decisión explícita del humano con el veredicto que tenían en e
 
 ---
 
-## Pendiente (al momento de este README)
-
-- **Conectar el contador de subidas del tier `free`** (10/mes) y bloquear al llegar a 0.
-  Hoy ningún servicio incrementa el contador ni lo hace valer: `uploadsRemaining` es
-  siempre 10 y un usuario `free` sube sin límite real.
-- **Pantalla de tendencias y flujo de upgrade** en el frontend (la API ya existe).
-- **Borrado de historial** (blob, fila y reseteo del contador).
-- Detalle en `tareas/` y en la sección "Lo siguiente" del handoff de sesión más reciente
-  bajo `/Users/aureliano/Desktop/HANDOFF-*.md` (fuera del repo, en el escritorio del
-  desarrollador).
-
----
-
 ## Desarrollo local
 
 - **Requisitos:** Node 20, Docker, un cluster `kind` local (contexto `kind-kind`), `npm`,
